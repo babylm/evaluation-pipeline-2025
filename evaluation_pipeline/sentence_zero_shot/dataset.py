@@ -59,9 +59,14 @@ class CompletionRankingDataset(Dataset):
             for token_idx in phrase_indices:
                 phrase_mask[token_idx] = 1
 
-            processed_sentence_dict[f'sentence_{sentence_idx}_tokens'] = torch.LongTensor(bos_index + tokens)
-            processed_sentence_dict[f'sentence_{sentence_idx}_attn_mask'] = torch.LongTensor([1] + attention_mask)
-            processed_sentence_dict[f'sentence_{sentence_idx}_phrase_mask'] = torch.LongTensor([0] + phrase_mask)
+            if bos_index[0] is not None:
+                processed_sentence_dict[f'sentence_{sentence_idx}_tokens'] = torch.LongTensor(bos_index + tokens)
+                processed_sentence_dict[f'sentence_{sentence_idx}_attn_mask'] = torch.LongTensor([1] + attention_mask)
+                processed_sentence_dict[f'sentence_{sentence_idx}_phrase_mask'] = torch.LongTensor([0] + phrase_mask)
+            else:
+                processed_sentence_dict[f'sentence_{sentence_idx}_tokens'] = torch.LongTensor(tokens)
+                processed_sentence_dict[f'sentence_{sentence_idx}_attn_mask'] = torch.LongTensor(attention_mask)
+                processed_sentence_dict[f'sentence_{sentence_idx}_phrase_mask'] = torch.LongTensor(phrase_mask)
 
         return processed_sentence_dict
 
