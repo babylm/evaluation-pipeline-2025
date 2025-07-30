@@ -20,7 +20,7 @@ def _parse_arguments() -> argparse.Namespace:
     # Required Parameters
     parser.add_argument("--results_dir", default="results", type=pathlib.Path, help="The output directory where the results will be written.")
     parser.add_argument("--train_data", required=True, type=pathlib.Path, help="Path to file containing the training dataset, we expect it to be in a JSONL format.")
-    parser.add_argument("--model_name_or_path", required=True, type=pathlib.Path, help="The local path to the model binary.")
+    parser.add_argument("--model_name_or_path", required=True, type=str, help="The local path to the model binary.")
     parser.add_argument("--metrics", default=["accuracy"], nargs='+', help="List of metrics to evaluate for the model (accuracy, f1, and mcc).", choices=["accuracy", "f1", "mcc"])
     parser.add_argument("--num_labels", required=True, type=int, help="The number of labels in the dataset. (3 for MNLI, 2 for all other tasks)")
     parser.add_argument("--seed", default=42, type=int, help="The seed for the Random Number Generator.")
@@ -55,10 +55,12 @@ def _parse_arguments() -> argparse.Namespace:
     parser.add_argument("--beta1", default=0.9, type=float, help="The value of beta1 (or beta) in optimizers that require it.")
     parser.add_argument("--beta2", default=0.999, type=float, help="The value of beta2 in optimizers that require it.")
     parser.add_argument("--optimizer_eps", default=1e-8, type=float, help="The epsilon to add to the optimizer operations (if relevant) to stabalize and avoid dividing by zero.")
+    parser.add_argument("--padding_side", default='right', type=str, help="The padding side to use for the tokenizer")
     parser.add_argument("--amsgrad", default=False, action=argparse.BooleanOptionalAction, help="Whether to use AMSGrad variant of the AdamW optimizer. (Only relevant if adamw chosen for optimizer)")
     parser.add_argument("--causal", default=False, action=argparse.BooleanOptionalAction, help="Whether to use causal masking")
     parser.add_argument("--take_final", default=False, action=argparse.BooleanOptionalAction, help="Whether to take the last token rather than the first one.")
     parser.add_argument("--enc_dec", default=False, action=argparse.BooleanOptionalAction, help="Flag to indicate that the architecture is an encoder-decoder.")
+
 
     # W&B parameters
     parser.add_argument("--wandb", action=argparse.BooleanOptionalAction, default=False, help="Flag to activate W&B logging.")
@@ -67,9 +69,10 @@ def _parse_arguments() -> argparse.Namespace:
     parser.add_argument("--exp_name", type=str, default=None, help="The name of the run as it appears on W&B. By default this is: 'model_name_task_seed'")
 
     args = parser.parse_args()
+    args.model_name = pathlib.Path(args.model_name_or_path).stem
 
     if args.wandb and args.exp_name is None:
-        args.exp_name = "_".join([args.model_name_or_path.stem, args.task, str(args.seed)])
+        args.exp_name = "_".join([args.model_name, args.task, str(args.seed)])
 
     return args
 
@@ -80,7 +83,7 @@ if __name__ == "__main__":
     seed_everything(args.seed)
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
-    model_name: str = args.model_name_or_path.stem
+    model_name: str = args.model_name
     if args.task == "mnli":
         if args.valid_data is not None:
             args.task: str = args.valid_data.stem.split(".")[0]

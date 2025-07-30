@@ -74,6 +74,7 @@ class ModelForSequenceClassification(nn.Module):
         super().__init__()
         self.transformer: nn.Module = AutoModel.from_pretrained(config.model_name_or_path, trust_remote_code=True, revision=config.revision_name)
         self.enc_dec: bool = config.enc_dec
+        self.causal: bool = config.causal
         model_config = AutoConfig.from_pretrained(config.model_name_or_path, trust_remote_code=True, revision=config.revision_name)
         if self.enc_dec:
             self.decoder_start_token_id = model_config.decoder_start_token_id
@@ -123,7 +124,9 @@ class ModelForSequenceClassification(nn.Module):
         else:
             print(f"Add support for output type: {type(output_transformer)}!")
             exit()
-        if self.take_final and not self.enc_dec:
+        if self.take_final and not self.enc_dec and not self.causal:
+            transformer_output: torch.Tensor = encoding[:, -1]
+        elif self.take_final and not self.enc_dec:
             final_position: torch.Tensor = attention_mask[:, :, -1].squeeze().long().argmax(-1) - 1
             transformer_output: torch.Tensor = encoding[final_position].diagonal().t()
         else:
