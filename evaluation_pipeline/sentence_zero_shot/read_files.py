@@ -75,7 +75,7 @@ def decode(line: str, file_name: pathlib.Path, task: str, full_sentence_scores: 
     elif task == "entity_tracking":
         data_dict = decode_entity_tracking(raw_dict, file_name)
     elif task == "comps":
-        data_dict = decode_comps(raw_dict, file_name)        
+        data_dict = decode_comps(raw_dict, file_name)
     elif task == "vqa":
         data_dict = decode_vqa(raw_dict, images)
     elif task == "winoground":
@@ -210,7 +210,6 @@ def decode_entity_tracking(raw_dict: dict[str, Any], file_name: pathlib.Path) ->
     return pair
 
 
-
 def decode_comps(raw_dict: dict[str, Any], file_name: pathlib.Path) -> dict[str, str]:
     """This function takes a dictionary of a single datapoint of a COMPS datafile
     and returns a dictionary of terms to be used by the evaluation.
@@ -240,6 +239,7 @@ def decode_comps(raw_dict: dict[str, Any], file_name: pathlib.Path) -> dict[str,
         "UID" : subset
     }
     return pair
+
 
 def decode_vqa(raw_dict: dict[str, Any], images: Dataset) -> dict[str, str]:
     """This function takes a dictionary of a single datapoint
