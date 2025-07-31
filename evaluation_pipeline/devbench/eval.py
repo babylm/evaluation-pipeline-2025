@@ -155,3 +155,5 @@ if __name__ == "__main__":
     things_score = get_things_scores(things_file)
 
     results = f"Visual Vocabulary Accuracy: {vv_score['accuracy']}\nTROG Accuracy: {trog_score['accuracy']}\nThings Spearman Correlation: {things_score}"
+    with open(f"results/{model_name}/{args.revision}/zero_shot/devbench/results.txt", "w") as f:
+        f.write(results)

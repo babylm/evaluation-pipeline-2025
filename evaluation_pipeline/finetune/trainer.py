@@ -9,7 +9,7 @@ from functools import partial
 
 import torch
 from torch.nn import functional as F
-from transformers import AutoTokenizer, AutoProcessor
+from transformers import AutoProcessor
 from torch.utils.data import DataLoader
 from torch.optim import AdamW
 
@@ -83,7 +83,6 @@ class Trainer():
         self.model.to(self.device)
         self.ema_model.to(self.device)
         self.tokenizer: PreTrainedTokenizerBase = AutoProcessor.from_pretrained(self.args.model_name_or_path, trust_remote_code=True, padding_side=self.args.padding_side)
-
 
     def load_data(self: Trainer) -> None:
         """This function loads the data and creates the

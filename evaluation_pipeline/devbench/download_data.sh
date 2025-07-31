@@ -37,11 +37,11 @@ rm data.json
 # End DevBench code
 
 cp evaluation_pipeline/devbench/manifests/gram-trog.csv $DB_PREFIX/assets/gram-trog/manifest.csv
-cp evaluation_pipeline/devbench/data/gram-trog_human.csv $DB_PREFIX/evals/gram-trog/human.csv
+cp evaluation_pipeline/devbench/data_human/gram-trog_human.csv $DB_PREFIX/evals/gram-trog/human.csv
 
 ## Visual Vocabulary
 mkdir $DB_PREFIX/assets/lex-viz_vocab
 mkdir $DB_PREFIX/evals/lex-viz_vocab
 ln -s `realpath $DB_PREFIX/assets/sem-things/object_images_CC0/` $DB_PREFIX/assets/lex-viz_vocab/images
 cp evaluation_pipeline/devbench/manifests/lex-viz_vocab.csv $DB_PREFIX/assets/lex-viz_vocab/manifest.csv
-cp evaluation_pipeline/devbench/data/lex-viz_vocab_human.csv $DB_PREFIX/evals/lex-viz_vocab/human.csv
+cp evaluation_pipeline/devbench/data_human/lex-viz_vocab_human.csv $DB_PREFIX/evals/lex-viz_vocab/human.csv

@@ -61,7 +61,6 @@ def _parse_arguments() -> argparse.Namespace:
     parser.add_argument("--take_final", default=False, action=argparse.BooleanOptionalAction, help="Whether to take the last token rather than the first one.")
     parser.add_argument("--enc_dec", default=False, action=argparse.BooleanOptionalAction, help="Flag to indicate that the architecture is an encoder-decoder.")
 
-
     # W&B parameters
     parser.add_argument("--wandb", action=argparse.BooleanOptionalAction, default=False, help="Flag to activate W&B logging.")
     parser.add_argument("--wandb_project", type=str, default="BabyLM Finetuning", help="The name of the project to log to. By default this is BabyLM Finetuning.")
