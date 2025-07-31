@@ -20,7 +20,7 @@ if __name__ == "__main__":
     image_model = args.image_model if args.image_model is not None else args.model
 
     if args.model_type == "clip":
-        from devbench.model_classes.clip import ClipEvalModel
+        from evaluation_pipeline.devbench.model_classes.clip import ClipEvalModel
         from transformers import CLIPProcessor, CLIPModel
 
         eval_model = ClipEvalModel(
@@ -30,7 +30,7 @@ if __name__ == "__main__":
         )
 
     elif args.model_type == "blip":
-        from devbench.model_classes.blip import BlipEvalModel
+        from evaluation_pipeline.devbench.model_classes.blip import BlipEvalModel
         from transformers import AutoProcessor, BlipForImageTextRetrieval, BlipModel
 
         eval_model = BlipEvalModel(
@@ -41,7 +41,7 @@ if __name__ == "__main__":
         )
 
     elif args.model_type == "flava":
-        from devbench.model_classes.flava import FlavaEvalModel
+        from evaluation_pipeline.devbench.model_classes.flava import FlavaEvalModel
         from transformers import FlavaProcessor, FlavaFeatureExtractor, FlavaForPreTraining, FlavaModel
 
         eval_model = FlavaEvalModel(
@@ -53,7 +53,7 @@ if __name__ == "__main__":
         )
 
     elif args.model_type == "bridgetower":
-        from devbench.model_classes.bridgetower import BridgetowerEvalModel
+        from evaluation_pipeline.devbench.model_classes.bridgetower import BridgetowerEvalModel
         from transformers import BridgeTowerProcessor, BridgeTowerForImageAndTextRetrieval, BridgeTowerModel
 
         eval_model = BridgetowerEvalModel(
@@ -65,7 +65,7 @@ if __name__ == "__main__":
         )
 
     elif args.model_type == "vilt":
-        from devbench.model_classes.vilt import ViltEvalModel
+        from evaluation_pipeline.devbench.model_classes.vilt import ViltEvalModel
         from transformers import ViltProcessor, ViltForImageAndTextRetrieval, ViltModel
 
         eval_model = ViltEvalModel(
@@ -77,7 +77,7 @@ if __name__ == "__main__":
         )
 
     elif args.model_type == "cvcl":
-        from devbench.model_classes.cvcl import CvclEvalModel
+        from evaluation_pipeline.devbench.model_classes.cvcl import CvclEvalModel
         from multimodal.multimodal_lit import MultiModalLitModel
 
         # tested with model = "cvcl"
@@ -90,7 +90,7 @@ if __name__ == "__main__":
         )
 
     elif args.model_type == "siglip":
-        from devbench.model_classes.siglip import SiglipEvalModel
+        from evaluation_pipeline.devbench.model_classes.siglip import SiglipEvalModel
         from transformers import AutoProcessor, AutoModel, AutoTokenizer
 
         # tested with model = "google/siglip-so400m-patch14-384", image_model = "google/siglip-base-patch16-224"
@@ -103,7 +103,7 @@ if __name__ == "__main__":
         )
 
     elif args.model_type == "llava":
-        from devbench.model_classes.llava import LlavaEvalModel
+        from evaluation_pipeline.devbench.model_classes.llava import LlavaEvalModel
         from transformers import AutoProcessor, AutoModelForPreTraining
         # tested with model = "llava-hf/llava-v1.6-mistral-7b-hf" and "bczhou/tiny-llava-v1-hf"
         is_tiny = False
@@ -116,7 +116,7 @@ if __name__ == "__main__":
         )
 
     elif args.model_type in ["git", "flamingo"]:
-        from devbench.model_classes.babylm_models import BabyLMEvalModel
+        from evaluation_pipeline.devbench.model_classes.babylm_models import BabyLMEvalModel
         from transformers import AutoProcessor, AutoModelForCausalLM
 
         eval_model = BabyLMEvalModel(
@@ -154,4 +154,4 @@ if __name__ == "__main__":
     np.save(f"results/{model_name}/{args.revision}/zero_shot/devbench/sem-things.npy", things_embeds)
     things_score = get_things_scores(things_file)
 
-    results = f"Visual Vocabulary Accuracy: {vv_score['accuracy']}\nTROG Accuracy: {trog_score["accuracy"]}\nThings Spearman Correlation: {things_score}"
+    results = f"Visual Vocabulary Accuracy: {vv_score['accuracy']}\nTROG Accuracy: {trog_score['accuracy']}\nThings Spearman Correlation: {things_score}"
