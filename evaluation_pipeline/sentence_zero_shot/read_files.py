@@ -74,6 +74,8 @@ def decode(line: str, file_name: pathlib.Path, task: str, full_sentence_scores: 
         data_dict = decode_wug_adj_nominalization(raw_dict)
     elif task == "entity_tracking":
         data_dict = decode_entity_tracking(raw_dict, file_name)
+    elif task == "comps":
+        data_dict = decode_comps(raw_dict, file_name)        
     elif task == "vqa":
         data_dict = decode_vqa(raw_dict, images)
     elif task == "winoground":
@@ -207,6 +209,37 @@ def decode_entity_tracking(raw_dict: dict[str, Any], file_name: pathlib.Path) ->
 
     return pair
 
+
+
+def decode_comps(raw_dict: dict[str, Any], file_name: pathlib.Path) -> dict[str, str]:
+    """This function takes a dictionary of a single datapoint of a COMPS datafile
+    and returns a dictionary of terms to be used by the evaluation.
+
+    Args:
+        raw_dict(dict[str, Any]): A dictionary from a single datapoint of a
+            COMPS datafile.
+
+    Returns:
+        dict[str, str]: A dictionary with values used for evaluation
+    """
+    acceptable_sentence = " ".join([raw_dict["prefix_acceptable"], raw_dict["property_phrase"]])
+    unacceptable_sentence = " ".join([raw_dict["prefix_unacceptable"], raw_dict["property_phrase"]])
+    if file_name.stem == "comps_base":
+        subset = "base"
+    elif file_name.stem == "comps_wugs":
+        subset = "wugs"
+    elif file_name.stem == "comps_wugs_dist-before":
+        subset = "wugs_dist_before"
+    else:
+        subset = "wugs_dist_in_between"
+    pair = {
+        "sentences" : [acceptable_sentence, unacceptable_sentence],
+        "prefixes" : [raw_dict["prefix_acceptable"], raw_dict["prefix_unacceptable"]],
+        "completions" : [raw_dict["property_phrase"], raw_dict["property_phrase"]],
+        "label" : 0,
+        "UID" : subset
+    }
+    return pair
 
 def decode_vqa(raw_dict: dict[str, Any], images: Dataset) -> dict[str, str]:
     """This function takes a dictionary of a single datapoint

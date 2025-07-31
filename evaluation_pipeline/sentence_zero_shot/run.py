@@ -21,7 +21,7 @@ def _parse_arguments():
 
     # Required parameters
     parser.add_argument("--data_path", required=True, type=pathlib.Path, help="Path to the data directory")
-    parser.add_argument("--task", required=True, type=str, help="The task that is being evaluated.", choices=["blimp", "ewok", "entity_tracking", "wug", "vqa", "winoground"])
+    parser.add_argument("--task", required=True, type=str, help="The task that is being evaluated.", choices=["blimp", "ewok", "entity_tracking", "wug", "comps", "vqa", "winoground"])
     parser.add_argument("--model_path_or_name", required=True, type=str, help="Path to the model to evaluate.")
     parser.add_argument("--backend", required=True, type=str, help="The evaluation backend strategy", choices=["mlm", "causal", "mntp", "enc_dec_mask", "enc_dec_prefix"])
 
