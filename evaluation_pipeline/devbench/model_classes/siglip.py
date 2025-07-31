@@ -1,11 +1,12 @@
-from devbench.eval_model import EvalModel
+from evaluation_pipeline.devbench.eval_model import EvalModel
 from tqdm import tqdm
 import torch
 import numpy as np
 from PIL import Image
 
+
 class SiglipEvalModel(EvalModel):
-    def __init__(self, model, processor=None, tokenizer=None, model_embed=None, processor_embed = None, device="cpu"):
+    def __init__(self, model, processor=None, tokenizer=None, model_embed=None, processor_embed=None, device="cpu"):
         self.device = device
         self.model = model.to(device)
         self.processor = processor
@@ -29,10 +30,10 @@ class SiglipEvalModel(EvalModel):
         all_feats = []
         with torch.no_grad():
             for d in tqdm(dataloader, desc="Processing data"):
-                inputs = self.tokenizer(d['text'], padding = "max_length", return_tensors = "pt")
+                inputs = self.tokenizer(d['text'], padding="max_length", return_tensors="pt")
                 text_features = self.model_embed.get_text_features(**inputs)
-        return text_features
-    
+                all_feats.append(text_features)
+        return np.concatenate(all_feats, axis=0)
 
     def get_all_sim_scores(self, dataloader):
         all_sims = []
@@ -40,11 +41,11 @@ class SiglipEvalModel(EvalModel):
             for d in tqdm(dataloader, desc="Processing data"):
                 # Process the batch for variable number of images and texts
                 images_rgb = [img.convert("RGB") if isinstance(img, Image.Image) else img for img in d["images"]]
-                inputs = self.processor(images=images_rgb, text=d["text"], 
-                                return_tensors="pt", padding=True)
-                
+                inputs = self.processor(images=images_rgb, text=d["text"],
+                                        return_tensors="pt", padding=True)
+
                 outputs = self.model(**inputs)
-                
+
                 logits_per_image = outputs.logits_per_image  # Get logits for each image-text pair
                 sims = torch.sigmoid(logits_per_image).detach().cpu().numpy()  # Convert to probabilities
                 all_sims.append(sims)

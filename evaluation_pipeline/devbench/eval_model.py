@@ -2,6 +2,7 @@ from tqdm import tqdm
 import torch
 import numpy as np
 
+
 class EvalModel():
     def __init__(self, model, processor=None, device="cpu"):
         self.device = device
@@ -10,7 +11,7 @@ class EvalModel():
         self.get_image_features = self.model.get_image_features
         self.get_text_features = self.model.get_text_features
         self.get_similarity_scores = lambda **x: self.model(**x).logits_per_image
-    
+
     def get_all_image_feats(self, dataloader):
         """
         Gets image features from a dataloader
@@ -46,12 +47,12 @@ class EvalModel():
         all_feats = []
         with torch.no_grad():
             for d in tqdm(dataloader, desc="Processing data"):
-                inputs = self.processor(text=d["text"], return_tensors="pt", 
-                                padding=True).to(self.device)
+                inputs = self.processor(text=d["text"], return_tensors="pt",
+                                        padding=True).to(self.device)
                 feats = self.get_text_features(**inputs).detach().numpy()
                 all_feats.append(feats)
         return np.concatenate(all_feats, axis=0)
-    
+
     def get_all_sim_scores(self, dataloader):
         """
         Gets image--text similarity scores from a dataloader
@@ -62,15 +63,15 @@ class EvalModel():
         - get_similarity_scores: the model or model attribute used to
         obtain similarity scores
         Outputs:
-        - a numpy array of shape [num_trials, num_images_per_trial, 
+        - a numpy array of shape [num_trials, num_images_per_trial,
         num_texts_per_trial]
         """
         all_sims = []
         with torch.no_grad():
             for d in tqdm(dataloader, desc="Processing data"):
-		# inputs = self.processor(images=d["images"], return_tensors="pt").to(self.device)
+                # inputs = self.processor(images=d["images"], return_tensors="pt").to(self.device)
                 # images_tensor = torch.stack(d["images"]).to(self.device)
-                inputs = self.processor(images=d["images"], text=d["text"], 
+                inputs = self.processor(images=d["images"], text=d["text"],
                                         return_tensors="pt", padding=True)
                 sims = self.get_similarity_scores(**inputs).detach().numpy()
                 all_sims.append(sims)

@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import pathlib
 import argparse
+import numpy as np
 
 BLIMP_FAST_SIZE = 200
 SUPPLEMENT_FAST_SIZE = 50
@@ -14,6 +15,7 @@ WUG_SIZE = 200
 
 WINOGROUND_SIZE = 746
 VQA_SIZE = 25230
+DEVBENCH = {"things": (1854, 1854), "trog": (76, 4, 1), "lex-viz_vocab": (119, 4, 1)}
 
 BLIMP_SIZES = {
     'superlative_quantifiers_2': 986,
@@ -174,6 +176,7 @@ def _parse_arguments() -> argparse.Namespace:
 def _check_validity_of_dir(args: argparse.Namespace) -> bool:
     finetune_path = args.results_dir / args.model_path_or_name.stem / args.revision_name / "finetune"
     zero_shot_path = args.results_dir / args.model_path_or_name.stem / args.revision_name / "zero_shot" / args.backend
+    devbench_path = args.results_dir / args.model_path_or_name.stem / args.revision_name / "zero_shot"
     valid = True
 
     if args.fast:
@@ -241,7 +244,16 @@ def _check_validity_of_dir(args: argparse.Namespace) -> bool:
                 valid = False
             if not (zero_shot_path / "winoground" / "winoground_filtered" / "predictions.json").exists():
                 print("The winoground data is missing!")
-            valid = False
+                valid = False
+            if not (devbench_path / "devbench" / "lex-viz_vocab.npy").exists():
+                print("The devbench visual vocabulary data is missing!")
+                valid = False
+            if not (devbench_path / "devbench" / "gram-trog.npy").exists():
+                print("The devbench TROG data is missing!")
+                valid = False
+            if not (devbench_path / "devbench" / "sem-things.npy").exists():
+                print("The devbench things data is missing!")
+                valid = False
 
     return valid
 
@@ -271,10 +283,29 @@ def _check_size(task: str, results: dict[str, dict[str, list[dict[str, str | int
     return valid
 
 
+def _check_size_devbench(subtask: str, results: np.array[float]) -> bool:
+    valid = True
+    required_shape = DEVBENCH[subtask]
+
+    if results.shape != required_shape:
+        print(f"Error: Wrong shape for results for `{subtask}` in `devbench`.")
+        valid = False
+    if str(results.dtype).startswith("float"):
+        print(f"Error: Results for `{subtask}` (devbench) should be floats but aren't.")
+        valid = False
+
+    return valid
+
+
 def _load_results(path: pathlib.Path) -> dict[str, dict[str, list[dict[str, str | int | float]]]]:
     with path.open("r") as fj:
         results: dict[str, dict[str, list[dict[str, str | int | float]]]] = json.load(fj)
 
+    return results
+
+
+def _load_results_devbench(path: pathlib.Path) -> np.array[float]:
+    results = np.load(path)
     return results
 
 
@@ -321,6 +352,7 @@ def collate_preds(args: argparse.Namespace) -> None:
     else:
         full_results = {}
         zero_main_path: pathlib.Path = args.results_dir / args.model_path_or_name.stem / args.revision_name / "zero_shot" / args.backend
+        devbench_path: pathlib.Path = args.results_dir / args.model_path_or_name.stem / args.revision_name / "zero_shot"
         fine_main_path: pathlib.Path = args.results_dir / args.model_path_or_name.stem / args.revision_name / "finetune"
         output_path: pathlib.Path = args.results_dir / args.model_path_or_name.stem / args.revision_name / f"all_full_preds_{args.backend}.json"
 
@@ -365,7 +397,31 @@ def collate_preds(args: argparse.Namespace) -> None:
             full_results["glue"] |= read_results
 
         # Multi-Modal
-        # TODO
+        # VQA
+        read_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(zero_main_path / "vqa" / "vqa_filtered" / "predictions.json")
+        assert _check_size("vqa", read_results, args.fast), "The VQA data is incorrect"
+        full_results["vqa"] = read_results
+
+        # VQA
+        read_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(zero_main_path / "winoground" / "winoground_filtered" / "predictions.json")
+        assert _check_size("winoground", read_results, args.fast), "The Winoground data is incorrect"
+        full_results["winoground"] = read_results
+
+        # DevBench
+        # Visual vocabulary
+        read_results: np.array[float] = _load_results_devbench(devbench_path / "devbench" / "lex-viz_vocab.npy")
+        assert _check_size_devbench("lex-viz_visual", read_results), "The DevBench Visual vocabulary data is incorrect"
+        full_results["devbench"]["lex-viz_visual"]["predictions"] = read_results.tolist()
+
+        # TROG
+        read_results: np.array[float] = _load_results_devbench(devbench_path / "devbench" / "gram-trog.npy")
+        assert _check_size_devbench("torg", read_results), "The DevBench TROG data is incorrect"
+        full_results["devbench"]["trog"]["predictions"] = read_results.tolist()
+
+        # Things
+        read_results: np.array[float] = _load_results_devbench(devbench_path / "devbench" / "sem-things.npy")
+        assert _check_size_devbench("things", read_results), "The DevBench thingsy data is incorrect"
+        full_results["devbench"]["things"]["predictions"] = read_results.tolist()
 
         with output_path.open("w") as fj:
             json.dump(full_results, fj)

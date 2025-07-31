@@ -19,7 +19,7 @@ cp evaluation_pipeline/devbench/manifests/sem-things.csv $DB_PREFIX/assets/sem-t
 mkdir $DB_PREFIX/assets/gram-trog
 mkdir $DB_PREFIX/evals/gram-trog
 # The following code is adapted from the DevBench repository: https://github.com/alvinwmtan/dev-bench/blob/master/assets/gram-trog/trog_dl.sh
-URL="https://github.com/yeatmanlab/roar-tasks/tree/main/assets/TROG/original"
+URL="https://api.github.com/repos/levante-framework/core-tasks/contents/assets/TROG/original?ref=1dba11a50621186daad2ccc4dc2943f1536fb6db"
 
 # Create images directory if it doesn't exist
 mkdir -p $DB_PREFIX/assets/gram-trog/images

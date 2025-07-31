@@ -1,11 +1,12 @@
-from devbench.eval_model import EvalModel
+from evaluation_pipeline.devbench.eval_model import EvalModel
 from tqdm import tqdm
 import torch
 
+
 class BlipEvalModel(EvalModel):
     def __init__(self, model, processor=None, image_model=None, device="cpu"):
-        self.device = torch.device(device)  
-        self.model = model.to(self.device)  
+        self.device = torch.device(device)
+        self.model = model.to(self.device)
         self.processor = processor
         self.image_model = image_model
 

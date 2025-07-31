@@ -1,8 +1,9 @@
-from devbench.eval_model import EvalModel
+from evaluation_pipeline.devbench.eval_model import EvalModel
 from tqdm import tqdm
 import torch
 import numpy as np
 from PIL import Image
+
 
 class ViltEvalModel(EvalModel):
     def __init__(self, model, processor=None, vilt_base_model=None, vilt_base_processor=None, device="cpu"):
@@ -36,14 +37,14 @@ class ViltEvalModel(EvalModel):
                 sims = np.zeros((num_images, num_texts))
 
                 for i, image in enumerate(d["images"]):
-                    #print(image)
+                    # print(image)
                     if image.mode != 'RGB':
                         image = image.convert('RGB')
-                    #print(image.mode)
+                    # print(image.mode)
                     scores = {}
                     for j, text in enumerate(d["text"]):
                         # Prepare inputs for each image-text pair
-                        #inputs = processor(images=image, text=text, return_tensors="pt", padding=True, truncation=True)
+                        # inputs = processor(images=image, text=text, return_tensors="pt", padding=True, truncation=True)
                         encoding = self.processor(image, text, return_tensors="pt")
                         # Forward pass
                         outputs = self.model(**encoding)
@@ -52,9 +53,8 @@ class ViltEvalModel(EvalModel):
 
                 # Append the similarity scores for this batch to all_sims
                 all_sims.append(sims)
-        
+
         return np.stack(all_sims, axis=0)
-    
 
     def get_all_text_feats(self, dataloader):
         embeddings = []
@@ -62,9 +62,9 @@ class ViltEvalModel(EvalModel):
 
         with torch.no_grad():
             for data in tqdm(dataloader, desc="Processing data"):
-                texts = data['text']  
+                texts = data['text']
                 encoding = self.vilt_base_processor(
-                    images=[blank_image] * len(texts),  
+                    images=[blank_image] * len(texts),
                     text=texts,
                     return_tensors="pt",
                     padding=True,
@@ -74,7 +74,6 @@ class ViltEvalModel(EvalModel):
                 outputs = self.vilt_base_model(**encoding).pooler_output
                 embeddings.extend(outputs.cpu())
         return embeddings
-    
 
     def get_all_image_feats(self, dataloader):
         all_feats = []

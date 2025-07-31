@@ -1,7 +1,8 @@
-from devbench.eval_model import EvalModel
+from evaluation_pipeline.devbench.eval_model import EvalModel
 from tqdm import tqdm
 import torch
 import numpy as np
+
 
 class CvclEvalModel(EvalModel):
     def __init__(self, model, processor=None,  device="cpu"):
@@ -11,7 +12,7 @@ class CvclEvalModel(EvalModel):
         self.get_image_features = self.get_all_image_feats
         self.get_text_features = self.get_all_text_feats
         self.get_similarity_scores = self.get_all_sim_scores
-    
+
     def get_all_image_feats(self, dataloader):
         """
         Gets image features from a dataloader
@@ -32,16 +33,16 @@ class CvclEvalModel(EvalModel):
                 images = [self.processor(img.convert("RGB")) for img in d["images"]]
                 images = torch.stack(images).to(self.device)
                 image_features = self.model.encode_image(images)
-                #print(image_features.shape)
-                #processed_inputs = processor(images=d["images"], return_tensors="pt")
-                #pixel_values = processed_inputs["pixel_values"]
-                
+                # print(image_features.shape)
+                # processed_inputs = processor(images=d["images"], return_tensors="pt")
+                # pixel_values = processed_inputs["pixel_values"]
+
                 # Get image features using model's encode_image method
-                #image_features = model.encode_image(pixel_values).detach().numpy()
-                
+                # image_features = model.encode_image(pixel_values).detach().numpy()
+
                 # Append features to the list
                 all_feats.append(image_features)
-        
+
         return np.concatenate(all_feats, axis=0)
 
     def get_all_sim_scores(self, dataloader):
@@ -73,7 +74,6 @@ class CvclEvalModel(EvalModel):
                 sims = logits_per_image.detach().cpu().numpy()
                 all_sims.append(sims)
         return np.stack(all_sims, axis=0)
-    
 
     def get_all_text_feats_cvcl(self, dataloader):
         all_feats = []
@@ -81,7 +81,7 @@ class CvclEvalModel(EvalModel):
 
         with torch.no_grad():
             for data in tqdm(dataloader, desc="Processing text"):
-                texts = data['text']  
+                texts = data['text']
                 texts, texts_len = self.model.tokenize(texts)
                 texts, texts_len = texts.to(self.device), texts_len.to(self.device)
                 text_features = self.model.encode_text(texts, texts_len)

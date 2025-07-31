@@ -1,9 +1,9 @@
-from devbench.eval_model import EvalModel
+from evaluation_pipeline.devbench.eval_model import EvalModel
 from tqdm import tqdm
 import torch
 import numpy as np
-from PIL import Image
 import torchvision.transforms as transforms
+
 
 class LlavaEvalModel(EvalModel):
     def __init__(self, model, processor=None, is_tiny=False, device="cpu"):

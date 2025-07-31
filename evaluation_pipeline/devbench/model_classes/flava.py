@@ -1,7 +1,8 @@
-from devbench.eval_model import EvalModel
+from evaluation_pipeline.devbench.eval_model import EvalModel
 from tqdm import tqdm
 import torch
 import numpy as np
+
 
 class FlavaEvalModel(EvalModel):
     def __init__(self, model, processor=None, image_model=None, feature_extractor=None, device="cpu"):
@@ -55,17 +56,16 @@ class FlavaEvalModel(EvalModel):
                 text_features = self.image_model.get_text_features(**inputs)[:, 0].float()
                 all_feats.extend(text_features)
         return all_feats
-    
 
     def get_all_sim_scores(self, dataloader):
         all_sims = []
         with torch.no_grad():
             for d in tqdm(dataloader, desc="Processing data"):
                 images_rgb = [image.convert("RGB") for image in d["images"]]
-                texts = [d["text"][0]] * len(images_rgb)  
-                inputs = self.processor(text=texts, images=images_rgb, 
-                                        return_tensors="pt", max_length=77, 
-                                        padding=True, return_codebook_pixels=True, 
+                texts = [d["text"][0]] * len(images_rgb)
+                inputs = self.processor(text=texts, images=images_rgb,
+                                        return_tensors="pt", max_length=77,
+                                        padding=True, return_codebook_pixels=True,
                                         return_image_mask=True)
                 outputs = self.model(**inputs)
                 scores = outputs.contrastive_logits_per_image[:, 0].view(-1, 1).numpy()
