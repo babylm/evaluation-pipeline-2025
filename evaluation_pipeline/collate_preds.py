@@ -11,6 +11,7 @@ ENTITY_TRACKING_FAST_SIZE = {"regular_0_ops": 606, "regular_1_ops": 607, "regula
 
 READING_SIZE = 1726
 WUG_SIZE = 200
+WUG_PAST_TENSE_SIZE = 50
 
 WINOGROUND_SIZE = 746
 VQA_SIZE = 25230
@@ -135,7 +136,8 @@ FAST_SIZES = {
     "blimp_supplement": SUPPLEMENT_FAST_SIZE,
     "entity_tracking": ENTITY_TRACKING_FAST_SIZE,
     "reading": READING_SIZE,
-    "wug": WUG_SIZE
+    "wug": WUG_SIZE,
+    "wug_past_tense": WUG_PAST_TENSE_SIZE,
 }
 FULL_SIZES = {
     "ewok": EWOK_SIZES,
@@ -144,6 +146,7 @@ FULL_SIZES = {
     "entity_tracking": ENTITY_TRACKING_SIZES,
     "reading": READING_SIZE,
     "wug": WUG_SIZE,
+    "wug_past_tense": WUG_PAST_TENSE_SIZE,
     "boolq": BOOLQ_SIZE,
     "mnli": MNLI_SIZE,
     "mrpc": MRPC_SIZE,
@@ -190,7 +193,10 @@ def _check_validity_of_dir(args: argparse.Namespace) -> bool:
             print("The entity tracking data is missing!")
             valid = False
         if not (zero_shot_path / "wug" / "wug_adj_nominalization" / "predictions.json").exists():
-            print("The wug data is missing!")
+            print("The wug adj nominalization data is missing!")
+            valid = False
+        if not (zero_shot_path / "wug" / "wug_past_tense" / "predictions.json").exists():
+            print("The wug past tense data is missing!")
             valid = False
         if not (zero_shot_path / "reading" / "predictions.json").exists():
             print("The reading data is missing!")
@@ -230,7 +236,10 @@ def _check_validity_of_dir(args: argparse.Namespace) -> bool:
             print("The entity tracking data is missing!")
             valid = False
         if not (zero_shot_path / "wug" / "wug_adj_nominalization" / "predictions.json").exists():
-            print("The wug data is missing!")
+            print("The wug adj nominalization data is missing!")
+            valid = False
+        if not (zero_shot_path / "wug" / "wug_past_tense" / "predictions.json").exists():
+            print("The wug past tense data is missing!")
             valid = False
         if not (zero_shot_path / "reading" / "predictions.json").exists():
             print("The reading data is missing!")
@@ -348,6 +357,10 @@ def collate_preds(args: argparse.Namespace) -> None:
         wug_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(zero_main_path / "wug" / "wug_adj_nominalization" / "predictions.json")
         assert _check_size("wug", wug_results, args.fast), "The WUG data is incorrect"
         full_results["wug"] = wug_results
+
+        wug_past_tense_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(zero_main_path / "wug" / "wug_past_tense" / "predictions.json")
+        assert _check_size("wug_past_tense", wug_past_tense_results, args.fast), "The WUG data is incorrect"
+        full_results["wug_past_tense"] = wug_results
 
         # Reading
         read_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(zero_main_path / "reading" / "predictions.json")

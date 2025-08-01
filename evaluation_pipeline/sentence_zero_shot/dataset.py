@@ -352,7 +352,7 @@ class CompletionRankingDataset(Dataset):
         else:
             image = None
 
-        metadata_keys: list[str] = [key for key in data_dict if key not in ["sentences", "completions", "prefixes", "label", "image"]]
+        metadata_keys: list[str] = [key for key in data_dict if key not in ["sentences", "completions", "prefixes", "label", "image", "ratio"]]
         metadata: dict[str, str] = {key : data_dict[key] for key in metadata_keys}
 
         if self.backend == "causal":

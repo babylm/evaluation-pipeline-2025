@@ -55,10 +55,13 @@ def _calculate_ewok_results(results_dict: dict[str, dict[str, list[dict[str, str
 
 
 def _calculate_wug_results(results_dict: dict[str, dict[str, list[dict[str, str]]]], path_to_data: Path) -> float:
-    scores = []
+    model_ratios = []
+    human_ratios = []
+
     for subtask in results_dict.keys():
-        correct = 0
-        total = 0
+        subtask_results = results_dict[subtask]["predictions"]
+        for result in subtask_results:
+
         with (path_to_data / subtask).with_suffix(".jsonl").open("r") as data_file:
             subtask_results = results_dict[subtask]["predictions"]
             for result, data in zip(subtask_results, data_file.readlines()):
@@ -195,9 +198,12 @@ if __name__ == "__main__":
         # Entity Tracking
         score = _calculate_entity_tracking_results(all_results["entity_tracking"], evaluation_path / "entity_tracking")
         print(f"ENTITY TRACKING\t{score:.2f}")
-        # WUG
+        # WUG ADJ NOMINALIZATION
         score = _calculate_wug_results(all_results["wug"], evaluation_path / "wug_adj_nominalization")
-        print(f"WUG\t\t{score:.2f}")
+        print(f"WUG ADJ NOMINALIZATION\t\t{score:.2f}")
+        # WUG PAST TENSE
+        score = _calculate_wug_results(all_results["wug_past_tense"], evaluation_path / "wug_past_tense")
+        print(f"WUG PAST TENSE\t\t{score:.2f}")
         # Reading (SPR)
         scores = _calculate_reading_results(all_results["reading"], evaluation_path / "reading" / "reading_data.csv")
         print(f"READING (SPR)\t{scores[0]:.2f}")

@@ -59,7 +59,10 @@ def rank_and_evaluate(args, subset_to_stats, all_log_probs, raw_sentences, label
         stacked_probs = torch.stack(all_log_probs[temp], dim=1)
         chosen_sentences = torch.max(stacked_probs, dim=1)[1].tolist()
 
-        for raw_sentence_dict, chosen_sentence, label, metadata, uid in zip(raw_sentences, chosen_sentences, labels, metadatas, uids):
+        if args.task == "wug":
+            stacked_probs = torch.nn.functional.softmax(log_probs, dim=1)
+
+        for raw_sentence_dict, chosen_sentence, label, metadata, uid, prob in zip(raw_sentences, chosen_sentences, labels, metadatas, uids, stacked_probs[:,0]):
             is_correct = chosen_sentence == label
             for key, value in metadata.items():
                 temp_dict[key]["total"][value] += 1
@@ -67,7 +70,11 @@ def rank_and_evaluate(args, subset_to_stats, all_log_probs, raw_sentences, label
 
             if args.save_predictions:
                 num_id_matches = len(predictions[temp][uid])
-                predictions[temp][uid].append({"id" : f"{uid}_{num_id_matches}", "pred" : raw_sentence_dict["completions"][chosen_sentence]})
+                prediction = {"id": f"{uid}_{num_id_matches}", "pred": raw_sentence_dict["completions"][chosen_sentence]}
+                if args.task == "wug":
+                    prediction["prob"] = prob
+
+                predictions[temp][uid].append(prediction)
 
 
 def compute_causal_results(args, model, dataloader, temperatures):
