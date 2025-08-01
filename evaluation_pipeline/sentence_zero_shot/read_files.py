@@ -71,7 +71,7 @@ def decode(line: str, file_name: pathlib.Path, task: str, full_sentence_scores: 
     elif task == "ewok":
         data_dict = decode_ewok(raw_dict, full_sentence_scores)
     elif task == "wug":
-        data_dict = decode_wug_adj_nominalization(raw_dict)
+        data_dict = decode_wug_tasks(raw_dict, file_name.stem)
     elif task == "entity_tracking":
         data_dict = decode_entity_tracking(raw_dict, file_name)
     elif task == "vqa":
@@ -156,7 +156,7 @@ def decode_ewok(raw_dict: dict[str, Any], full_sentence_scores: bool) -> dict[st
     return pair
 
 
-def decode_wug_adj_nominalization(raw_dict: dict[str, Any]) -> dict[str, str]:
+def decode_wug_tasks(raw_dict: dict[str, Any], uid) -> dict[str, str]:
     """This function takes a dictionary of a single datapoint
     of the wug test datafile and returns a dictionary of terms
     to be used by the evaluation.
@@ -177,7 +177,7 @@ def decode_wug_adj_nominalization(raw_dict: dict[str, Any]) -> dict[str, str]:
         "completions": raw_dict["sentences"].split('\t'),
         "ratio": float(raw_dict["ratio"]),
         "label": 0,
-        "UID": "wug_adj_nominalization",
+        "UID": uid,
     }
 
     return pair
