@@ -124,7 +124,13 @@ def process_results_wug(results):
     return correlations, avg_correlations
 
 
-def create_evaluation_report(temperature: float, avg_accuracy: torch.Tensor, accuracies: dict[str, list[dict[str, float]]], file: TextIOWrapper | None = None) -> None:
+def create_evaluation_report(
+    temperature: float,
+    avg_accuracy: torch.Tensor,
+    accuracies: dict[str, list[dict[str, float]]],
+    task: str | None = None,
+    file: TextIOWrapper | None = None
+) -> None:
     """This function creates a report and either saves it to a file or prints it to the terminal.
 
     Args:
@@ -136,16 +142,17 @@ def create_evaluation_report(temperature: float, avg_accuracy: torch.Tensor, acc
         file(TextIOWrapper | None): The file to write to results to. (If None, it will printed
             printed to the terminal)
     """
+    metric = "ACCURACY" if task != "wug" else "SPEARMAN'S RHO"
     print(f"TEMPERATURE: {temperature:.2f}", file=file)
     print(file=file)
 
     for domain, accuracy in accuracies.items():
-        print(f"### {domain.upper()} ACCURACY", file=file)
+        print(f"### {domain.upper()} {metric}", file=file)
         for subdomain, acc in accuracy.items():
             print(f"{subdomain}: {acc:.2f}", file=file)
         print(file=file)
 
-    print("### AVERAGE ACCURACY", file=file)
+    print(f"### AVERAGE {metric}", file=file)
     print(f"{avg_accuracy:.2f}", file=file)
     print(file=file)
 
@@ -186,9 +193,9 @@ def main():
     print()
 
     # Report and save
-    create_evaluation_report(best_temp, average_accuracies[best_temp], accuracies[best_temp])
+    create_evaluation_report(best_temp, average_accuracies[best_temp], accuracies[best_temp], task=args.task)
     with (args.output_path / "best_temperature_report.txt").open("w") as f:
-        create_evaluation_report(best_temp, average_accuracies[best_temp], accuracies[best_temp], file=f)
+        create_evaluation_report(best_temp, average_accuracies[best_temp], accuracies[best_temp], task=args.task, file=f)
 
     # Save predictions
     if args.save_predictions:

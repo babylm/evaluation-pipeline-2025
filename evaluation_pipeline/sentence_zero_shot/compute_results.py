@@ -102,8 +102,7 @@ def rank_and_evaluate_wug(args, subset_to_stats, all_log_probs, raw_sentences, l
 
                 predictions[temp][uid].append(prediction)
 
-        temp_dict["UID"]["correlation"] = spearmanr(model_ratios, human_ratios)
-
+        temp_dict["UID"]["correlation"] = spearmanr(model_ratios, human_ratios)[0]
 
 
 def compute_causal_results(args, model, dataloader, temperatures):
