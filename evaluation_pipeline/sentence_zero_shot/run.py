@@ -79,6 +79,9 @@ def process_results(args: argparse.ArgumentParser, results: dict):
         results (dict): Results obtained from running compute_results
     """
     # Compute accuracies
+    if args.task == "wug":
+        return process_results_wug(results)
+
     accuracies = {temp : {} for temp in results}
     for temp, temp_results in results.items():
         for subdomain, count_dict in temp_results.items():
@@ -107,6 +110,11 @@ def process_results(args: argparse.ArgumentParser, results: dict):
             average_accuracies[temp] = sum(split_accs) / len(split_accs)
 
     return accuracies, average_accuracies
+
+
+def process_results_wug(results):
+    correlations = {temp: }
+    return results, results
 
 
 def create_evaluation_report(temperature: float, avg_accuracy: torch.Tensor, accuracies: dict[str, list[dict[str, float]]], file: TextIOWrapper | None = None) -> None:

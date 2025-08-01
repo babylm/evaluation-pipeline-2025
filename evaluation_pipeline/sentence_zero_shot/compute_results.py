@@ -5,6 +5,7 @@ from __future__ import annotations
 import torch
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
+from scipy.stats import spearmanr
 
 import math
 from collections import Counter, defaultdict
@@ -42,28 +43,33 @@ def compute_results(args: argparse.ArgumentParser, model: torch.nn.Module, datal
             return compute_enc_dec_prefix_results(args, model, dataloader, temperatures)
 
 
-def update_subset_to_stats(subset_to_stats, metadatas):
+def update_subset_to_stats(subset_to_stats, metadatas, task):
     """Helper function to initialize result dictionary keys.
     """
     for temp, temp_dict in subset_to_stats.items():
-        for key in metadatas[0]:
-            if key not in temp_dict:
-                temp_dict[key] = {"total" : Counter(), "correct" : Counter()}
+        if task == "wug":
+            temp_dict["UID"] = {}
+        else:
+            for key in metadatas[0]:
+                if key not in temp_dict:
+                    temp_dict[key] = {"total" : Counter(), "correct" : Counter()}
 
 
 def rank_and_evaluate(args, subset_to_stats, all_log_probs, raw_sentences, labels, metadatas, uids, predictions):
     """This function takes as input model log-probabilities for each candidate sentence/completion
     and ground-truth labels, determines the model predictions and updates the result and prediction dictionaries.
     """
+    if args.task == "wug":
+        rank_and_evaluate_wug(args, subset_to_stats, all_log_probs, raw_sentences, labels, metadatas, uids, predictions)
+        return
+
     for temp, temp_dict in subset_to_stats.items():
         stacked_probs = torch.stack(all_log_probs[temp], dim=1)
         chosen_sentences = torch.max(stacked_probs, dim=1)[1].tolist()
 
-        if args.task == "wug":
-            stacked_probs = torch.nn.functional.softmax(log_probs, dim=1)
-
         for raw_sentence_dict, chosen_sentence, label, metadata, uid, prob in zip(raw_sentences, chosen_sentences, labels, metadatas, uids, stacked_probs[:,0]):
             is_correct = chosen_sentence == label
+
             for key, value in metadata.items():
                 temp_dict[key]["total"][value] += 1
                 temp_dict[key]["correct"][value] += 1 if is_correct else 0
@@ -71,10 +77,33 @@ def rank_and_evaluate(args, subset_to_stats, all_log_probs, raw_sentences, label
             if args.save_predictions:
                 num_id_matches = len(predictions[temp][uid])
                 prediction = {"id": f"{uid}_{num_id_matches}", "pred": raw_sentence_dict["completions"][chosen_sentence]}
+                predictions[temp][uid].append(prediction)
+
+
+def rank_and_evaluate_wug(args, subset_to_stats, all_log_probs, raw_sentences, labels, metadatas, uids, predictions):
+    """Creates the model-human correlations of the morphological wug tasks. """
+    for temp, temp_dict in subset_to_stats.items():
+        stacked_probs = torch.stack(all_log_probs[temp], dim=1)
+        chosen_sentences = torch.max(stacked_probs, dim=1)[1].tolist()
+
+        stacked_probs = torch.nn.functional.softmax(stacked_probs, dim=1)
+        model_ratios = []
+        human_ratios = []
+
+        for raw_sentence_dict, chosen_sentence, label, metadata, uid, prob in zip(raw_sentences, chosen_sentences, labels, metadatas, uids, stacked_probs[:,0]):
+            model_ratios.append(prob)
+            human_ratios.append(metadata['ratio'])
+
+            if args.save_predictions:
+                num_id_matches = len(predictions[temp][uid])
+                prediction = {"id": f"{uid}_{num_id_matches}", "pred": raw_sentence_dict["completions"][chosen_sentence]}
                 if args.task == "wug":
-                    prediction["prob"] = prob
+                    prediction["prob"] = prob.item()
 
                 predictions[temp][uid].append(prediction)
+
+        temp_dict["UID"]["correlation"] = spearmanr(model_ratios, human_ratios)
+
 
 
 def compute_causal_results(args, model, dataloader, temperatures):
@@ -86,7 +115,7 @@ def compute_causal_results(args, model, dataloader, temperatures):
         no_image = True
 
     for raw_sentences, sentence_dict, labels, metadatas, uids, images in tqdm(dataloader):
-        update_subset_to_stats(subset_to_stats, metadatas)
+        update_subset_to_stats(subset_to_stats, metadatas, args.task)
         num_sentences = len([key for key in sentence_dict.keys() if key.endswith("attn_mask")])
         prefixes = [f'sentence_{sentence_idx}' for sentence_idx in range(num_sentences)]
 
@@ -140,7 +169,7 @@ def compute_mlm_results(args, model, dataloader, temperatures):
         no_image = True
 
     for raw_sentences, sentence_dict, labels, metadatas, uids, images in tqdm(dataloader):
-        update_subset_to_stats(subset_to_stats, metadatas)
+        update_subset_to_stats(subset_to_stats, metadatas, args.task)
         num_sentences = len([key for key in sentence_dict.keys() if key.endswith("attn_mask")])
         prefixes = [f'sentence_{sentence_idx}' for sentence_idx in range(num_sentences)]
 
@@ -223,7 +252,7 @@ def compute_enc_dec_mask_results(args, model, dataloader, temperatures):
         no_image = True
 
     for raw_sentences, sentence_dict, labels, metadatas, uids, images in tqdm(dataloader):
-        update_subset_to_stats(subset_to_stats, metadatas)
+        update_subset_to_stats(subset_to_stats, metadatas, args.task)
         num_sentences = len([key for key in sentence_dict.keys() if key.endswith("enc_attn_mask")])
         prefixes = [f'sentence_{sentence_idx}' for sentence_idx in range(num_sentences)]
 
@@ -307,7 +336,7 @@ def compute_enc_dec_prefix_results(args, model, dataloader, temperatures):
         no_image = True
 
     for raw_sentences, sentence_dict, labels, metadatas, uids, images in tqdm(dataloader):
-        update_subset_to_stats(subset_to_stats, metadatas)
+        update_subset_to_stats(subset_to_stats, metadatas, args.task)
         num_sentences = len([key for key in sentence_dict.keys() if key.endswith("dec_attn_mask")])
         prefixes = [f'sentence_{sentence_idx}' for sentence_idx in range(num_sentences)]
 
