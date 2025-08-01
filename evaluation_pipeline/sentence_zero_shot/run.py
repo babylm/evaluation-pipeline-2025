@@ -113,8 +113,15 @@ def process_results(args: argparse.ArgumentParser, results: dict):
 
 
 def process_results_wug(results):
-    correlations = {temp: }
-    return results, results
+    correlations = {temp : {} for temp in results}
+    avg_correlations = {}
+
+    for temp, temp_results in results.items():
+        for subdomain, subdomain_correlations in temp_results.items():
+            correlations[temp][subdomain] = {"avg": subdomain_correlations["correlation"]}
+            avg_correlations[temp] = subdomain_correlations["correlation"]
+
+    return correlations, avg_correlations
 
 
 def create_evaluation_report(temperature: float, avg_accuracy: torch.Tensor, accuracies: dict[str, list[dict[str, float]]], file: TextIOWrapper | None = None) -> None:
