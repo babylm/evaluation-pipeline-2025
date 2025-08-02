@@ -21,6 +21,11 @@ We have added a couple of new tasks to the text-only evaluation suite:
 
 From last years iteration we are still including BLiMP, EWoK, and GLUE for evaluation.
 
+## Hidden Tasks
+
+- **Derivational Morphology Reveals Analogical Generalization in Large Language Models** [(Hofmann et al., 2024)](https://arxiv.org/abs/2411.07990) (WUG_ADJ & WUG_PAST) [Weissweiler et al. (2023)](https://aclanthology.org/2023.cxgsnlp-1.10/) introduce a task for testing morphological generalization, based on a past tense formation task of nonce ("wug") words. We evaluate this task against human predictions: from the participant responses we derive a distribution over possible inflections. This way we can test the "humanlikeness" of a model's generalization behavior, by correlating the model's probability for each inflection against the relative amount of responses we can measure whether they follow similar morphological patterns. [Hoffman et al. (2024)](https://arxiv.org/abs/2411.07990) build on this work and introduce a similar task for adjective nominalization, in which a nonce ("wug") adjective is nominalized as either an -ity noun or a -ness noun. Performance is measure in the same way, by correlating model probabilities to human judgments.
+- **COMPS: Conceptual Minimal Pair Sentences for testing Robust Property Knowledge and its Inheritance in Pre-trained Language Models** [(Misra et al., 2023)](https://aclanthology.org/2023.eacl-main.213/) (COMPS) [Misra et al. (2023)](https://aclanthology.org/2023.eacl-main.213/) introduce a task for testing the property knowledge of language models and whether they can infer that properties of superordinate concepts are inherited by subordinate concepts, each represented by nonce words. The dataset is composed of minimal pair sentences and models are evaluated by whether they assign higher probability to the correct sentence.
+
 ## Install
 
 > [!Note]
