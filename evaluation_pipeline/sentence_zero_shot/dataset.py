@@ -189,7 +189,7 @@ class CompletionRankingDataset(Dataset):
             processed_attention_masks = []
             for phrase_index in phrase_indices:
                 curr_tokens = torch.LongTensor(tokens)
-                curr_tokens[phrase_index + prepend] = mask_index
+                curr_tokens[phrase_index] = mask_index
                 processed_tokens.append(curr_tokens)
 
                 curr_attention_mask = torch.LongTensor(attention_mask)

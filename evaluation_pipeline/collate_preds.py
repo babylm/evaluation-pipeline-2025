@@ -12,6 +12,7 @@ ENTITY_TRACKING_FAST_SIZE = {"regular_0_ops": 606, "regular_1_ops": 607, "regula
 
 READING_SIZE = 1726
 WUG_SIZE = 200
+WUG_PAST_TENSE_SIZE = 50
 
 WINOGROUND_SIZE = 746
 VQA_SIZE = 25230
@@ -123,6 +124,12 @@ ENTITY_TRACKING_SIZES = {
     "move_contents_4_ops": 529,
     "move_contents_5_ops": 156
 }
+COMPS_SIZES = {
+    "base": 49340,
+    "wugs_dist_before": 13896,
+    "wugs_dist_in_between": 13896,
+    "wugs": 13896,
+}
 BOOLQ_SIZE = 1635
 MNLI_SIZE = 4908
 MRPC_SIZE = 204
@@ -137,7 +144,8 @@ FAST_SIZES = {
     "blimp_supplement": SUPPLEMENT_FAST_SIZE,
     "entity_tracking": ENTITY_TRACKING_FAST_SIZE,
     "reading": READING_SIZE,
-    "wug": WUG_SIZE
+    "wug_adj": WUG_SIZE,
+    "wug_past": WUG_PAST_TENSE_SIZE
 }
 FULL_SIZES = {
     "ewok": EWOK_SIZES,
@@ -145,7 +153,9 @@ FULL_SIZES = {
     "blimp_supplement": SUPPLEMENT_SIZES,
     "entity_tracking": ENTITY_TRACKING_SIZES,
     "reading": READING_SIZE,
-    "wug": WUG_SIZE,
+    "wug_adj": WUG_SIZE,
+    "wug_past": WUG_PAST_TENSE_SIZE,
+    "comps": COMPS_SIZES,
     "boolq": BOOLQ_SIZE,
     "mnli": MNLI_SIZE,
     "mrpc": MRPC_SIZE,
@@ -192,8 +202,11 @@ def _check_validity_of_dir(args: argparse.Namespace) -> bool:
         if not (zero_shot_path / "entity_tracking" / "entity_tracking_fast" / "predictions.json").exists():
             print("The entity tracking data is missing!")
             valid = False
-        if not (zero_shot_path / "wug" / "wug_adj_nominalization" / "predictions.json").exists():
-            print("The wug data is missing!")
+        if not (zero_shot_path / "wug_adj" / "wug_adj_nominalization" / "predictions.json").exists():
+            print("The wug adj nominalization data is missing!")
+            valid = False
+        if not (zero_shot_path / "wug_past" / "wug_past_tense" / "predictions.json").exists():
+            print("The wug past tense data is missing!")
             valid = False
         if not (zero_shot_path / "reading" / "predictions.json").exists():
             print("The reading data is missing!")
@@ -232,8 +245,14 @@ def _check_validity_of_dir(args: argparse.Namespace) -> bool:
         if not (zero_shot_path / "entity_tracking" / "entity_tracking" / "predictions.json").exists():
             print("The entity tracking data is missing!")
             valid = False
-        if not (zero_shot_path / "wug" / "wug_adj_nominalization" / "predictions.json").exists():
-            print("The wug data is missing!")
+        if not (zero_shot_path / "wug_adj" / "wug_adj_nominalization" / "predictions.json").exists():
+            print("The wug adj nominalization data is missing!")
+            valid = False
+        if not (zero_shot_path / "wug_past" / "wug_past_tense" / "predictions.json").exists():
+            print("The wug past tense data is missing!")
+            valid = False
+        if not (zero_shot_path / "comps" / "comps" / "predictions.json").exists():
+            print("The comps data is missing!")
             valid = False
         if not (zero_shot_path / "reading" / "predictions.json").exists():
             print("The reading data is missing!")
@@ -337,10 +356,15 @@ def collate_preds(args: argparse.Namespace) -> None:
         assert _check_size("entity_tracking", et_results, True), "The Entity Tracking Fast data is incorrect"
         full_results["entity_tracking"] = et_results
 
-        # WUG
-        wug_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(main_path / "wug" / "wug_adj_nominalization" / "predictions.json")
-        assert _check_size("wug", wug_results, True), "The WUG data is incorrect"
-        full_results["wug"] = wug_results
+        # WUG_ADJ
+        wug_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(main_path / "wug_adj" / "wug_adj_nominalization" / "predictions.json")
+        assert _check_size("wug_adj", wug_results, True), "The WUG Adjective Nominalization data is incorrect"
+        full_results["wug_adj"] = wug_results
+
+        # WUG_PAST
+        wug_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(main_path / "wug_past" / "wug_past_tense" / "predictions.json")
+        assert _check_size("wug_past", wug_results, True), "The WUG_PAST data is incorrect"
+        full_results["wug_past"] = wug_results
 
         # Reading
         read_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(main_path / "reading" / "predictions.json")
@@ -376,10 +400,20 @@ def collate_preds(args: argparse.Namespace) -> None:
         assert _check_size("entity_tracking", et_results, args.fast), "The Entity Tracking data is incorrect"
         full_results["entity_tracking"] = et_results
 
-        # WUG
-        wug_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(zero_main_path / "wug" / "wug_adj_nominalization" / "predictions.json")
-        assert _check_size("wug", wug_results, args.fast), "The WUG data is incorrect"
-        full_results["wug"] = wug_results
+        # WUG_ADJ
+        wug_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(zero_main_path / "wug_adj" / "wug_adj_nominalization" / "predictions.json")
+        assert _check_size("wug_adj", wug_results, args.fast), "The WUG Adjective Nominalization data is incorrect"
+        full_results["wug_adj"] = wug_results
+
+        # WUG_PAST
+        wug_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(zero_main_path / "wug_past" / "wug_past_tense" / "predictions.json")
+        assert _check_size("wug_past", wug_results, args.fast), "The WUG Past Tense data is incorrect"
+        full_results["wug_past"] = wug_results
+
+        # WUG_PAST
+        comps_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(zero_main_path / "comps" / "comps" / "predictions.json")
+        assert _check_size("comps", comps_results, args.fast), "The COMPS data is incorrect"
+        full_results["comps"] = comps_results
 
         # Reading
         read_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(zero_main_path / "reading" / "predictions.json")
@@ -396,32 +430,33 @@ def collate_preds(args: argparse.Namespace) -> None:
             assert _check_size(gt, read_results, args.fast), f"The {gt} data is incorrect"
             full_results["glue"] |= read_results
 
-        # Multi-Modal
-        # VQA
-        read_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(zero_main_path / "vqa" / "vqa_filtered" / "predictions.json")
-        assert _check_size("vqa", read_results, args.fast), "The VQA data is incorrect"
-        full_results["vqa"] = read_results
+        if args.multimodal:
+            # Multi-Modal
+            # VQA
+            read_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(zero_main_path / "vqa" / "vqa_filtered" / "predictions.json")
+            assert _check_size("vqa", read_results, args.fast), "The VQA data is incorrect"
+            full_results["vqa"] = read_results
 
-        # VQA
-        read_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(zero_main_path / "winoground" / "winoground_filtered" / "predictions.json")
-        assert _check_size("winoground", read_results, args.fast), "The Winoground data is incorrect"
-        full_results["winoground"] = read_results
+            # VQA
+            read_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(zero_main_path / "winoground" / "winoground_filtered" / "predictions.json")
+            assert _check_size("winoground", read_results, args.fast), "The Winoground data is incorrect"
+            full_results["winoground"] = read_results
 
-        # DevBench
-        # Visual vocabulary
-        read_results: np.array[float] = _load_results_devbench(devbench_path / "devbench" / "lex-viz_vocab.npy")
-        assert _check_size_devbench("lex-viz_visual", read_results), "The DevBench Visual vocabulary data is incorrect"
-        full_results["devbench"]["lex-viz_visual"]["predictions"] = read_results.tolist()
+            # DevBench
+            # Visual vocabulary
+            read_results: np.array[float] = _load_results_devbench(devbench_path / "devbench" / "lex-viz_vocab.npy")
+            assert _check_size_devbench("lex-viz_visual", read_results), "The DevBench Visual vocabulary data is incorrect"
+            full_results["devbench"]["lex-viz_visual"]["predictions"] = read_results.tolist()
 
-        # TROG
-        read_results: np.array[float] = _load_results_devbench(devbench_path / "devbench" / "gram-trog.npy")
-        assert _check_size_devbench("torg", read_results), "The DevBench TROG data is incorrect"
-        full_results["devbench"]["trog"]["predictions"] = read_results.tolist()
+            # TROG
+            read_results: np.array[float] = _load_results_devbench(devbench_path / "devbench" / "gram-trog.npy")
+            assert _check_size_devbench("torg", read_results), "The DevBench TROG data is incorrect"
+            full_results["devbench"]["trog"]["predictions"] = read_results.tolist()
 
-        # Things
-        read_results: np.array[float] = _load_results_devbench(devbench_path / "devbench" / "sem-things.npy")
-        assert _check_size_devbench("things", read_results), "The DevBench thingsy data is incorrect"
-        full_results["devbench"]["things"]["predictions"] = read_results.tolist()
+            # Things
+            read_results: np.array[float] = _load_results_devbench(devbench_path / "devbench" / "sem-things.npy")
+            assert _check_size_devbench("things", read_results), "The DevBench things data is incorrect"
+            full_results["devbench"]["things"]["predictions"] = read_results.tolist()
 
         with output_path.open("w") as fj:
             json.dump(full_results, fj)
