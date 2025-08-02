@@ -270,7 +270,7 @@ def _check_validity_of_dir(args: argparse.Namespace) -> bool:
             if not (devbench_path / "devbench" / "gram-trog.npy").exists():
                 print("The devbench TROG data is missing!")
                 valid = False
-            if not (devbench_path / "devbench" / "sem-things.npy").exists():
+            if not (devbench_path / "devbench" / "sem-things_pairwise_sims.npy").exists():
                 print("The devbench things data is missing!")
                 valid = False
 
@@ -309,7 +309,7 @@ def _check_size_devbench(subtask: str, results: np.array[float]) -> bool:
     if results.shape != required_shape:
         print(f"Error: Wrong shape for results for `{subtask}` in `devbench`.")
         valid = False
-    if str(results.dtype).startswith("float"):
+    if not str(results.dtype).startswith("float"):
         print(f"Error: Results for `{subtask}` (devbench) should be floats but aren't.")
         valid = False
 
@@ -437,24 +437,26 @@ def collate_preds(args: argparse.Namespace) -> None:
             assert _check_size("vqa", read_results, args.fast), "The VQA data is incorrect"
             full_results["vqa"] = read_results
 
-            # VQA
+            # Winoground
             read_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(zero_main_path / "winoground" / "winoground_filtered" / "predictions.json")
             assert _check_size("winoground", read_results, args.fast), "The Winoground data is incorrect"
             full_results["winoground"] = read_results
 
             # DevBench
             # Visual vocabulary
+            full_results['devbench'] = {'lex-viz_visual' : {}, 'trog' : {}, 'things' : {}}
+
             read_results: np.array[float] = _load_results_devbench(devbench_path / "devbench" / "lex-viz_vocab.npy")
-            assert _check_size_devbench("lex-viz_visual", read_results), "The DevBench Visual vocabulary data is incorrect"
+            assert _check_size_devbench("lex-viz_vocab", read_results), "The DevBench Visual vocabulary data is incorrect"
             full_results["devbench"]["lex-viz_visual"]["predictions"] = read_results.tolist()
 
             # TROG
             read_results: np.array[float] = _load_results_devbench(devbench_path / "devbench" / "gram-trog.npy")
-            assert _check_size_devbench("torg", read_results), "The DevBench TROG data is incorrect"
+            assert _check_size_devbench("trog", read_results), "The DevBench TROG data is incorrect"
             full_results["devbench"]["trog"]["predictions"] = read_results.tolist()
 
             # Things
-            read_results: np.array[float] = _load_results_devbench(devbench_path / "devbench" / "sem-things.npy")
+            read_results: np.array[float] = _load_results_devbench(devbench_path / "devbench" / "sem-things_pairwise_sims.npy")
             assert _check_size_devbench("things", read_results), "The DevBench things data is incorrect"
             full_results["devbench"]["things"]["predictions"] = read_results.tolist()
 
