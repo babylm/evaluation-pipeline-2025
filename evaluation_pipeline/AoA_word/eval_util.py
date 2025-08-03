@@ -1,0 +1,432 @@
+#!/usr/bin/env python
+import gc
+import json
+import logging
+import random
+import sys
+import typing as t
+from pathlib import Path
+
+import numpy as np
+import torch
+
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
+random.seed(42)
+T = t.TypeVar("T")
+
+
+class StepConfig:
+    """Configuration for step-wise analysis of model checkpoints."""
+
+    def __init__(
+        self,
+        resume: bool = False,
+        debug: bool = False,
+        file_path: Path | None = None,
+        interval: int = 1,
+        start_idx: int = 0,
+        end_idx: int | None = None,
+    ) -> None:
+        self.steps = self.generate_pythia_checkpoints()
+
+        if interval > 1 or start_idx > 0 or end_idx is not None:
+            self.steps = self._apply_interval_sampling(
+                self.steps, interval, start_idx, end_idx
+            )
+            range_info = f"from index {start_idx}"
+            if end_idx is not None:
+                range_info += f" to {end_idx}"
+            logger.info(
+                f"Applied interval sampling with n={interval} {range_info}, resulting in {len(self.steps)} steps"
+            )
+
+        if debug:
+            self.steps = self.steps[:5]
+            logger.info("Entering debugging mode, select first 5 steps.")
+
+        if resume and file_path is not None:
+            self.steps = self.recover_steps(file_path)
+
+        logger.info(f"Generated {len(self.steps)} checkpoint steps")
+
+    def _apply_interval_sampling(
+        self,
+        steps: list[int],
+        interval: int = 1,
+        start_idx: int = 0,
+        end_idx: int | None = None,
+    ) -> list[int]:
+        """Sample steps at every nth interval within specified range while preserving start and end steps."""
+        if len(steps) <= 2:
+            return steps
+
+        start_idx = max(0, min(start_idx, len(steps) - 2))
+
+        if end_idx is None:
+            end_idx = len(steps) - 1
+        else:
+            end_idx = max(start_idx + 1, min(end_idx, len(steps) - 1))
+
+        first_step = steps[0]
+        last_step = steps[-1]
+
+        if start_idx == 0 and end_idx == len(steps) - 1:
+            middle_steps = steps[1:-1][::interval]
+        else:
+            range_to_sample = steps[start_idx : end_idx + 1]
+
+            if start_idx == 0:
+                range_to_sample = range_to_sample[1:]
+
+            if end_idx == len(steps) - 1:
+                range_to_sample = range_to_sample[:-1]
+
+            middle_steps = range_to_sample[::interval]
+
+        result = [first_step]
+        result.extend(middle_steps)
+        result.append(last_step)
+
+        return sorted(list(set(result)))
+
+    def generate_pythia_checkpoints(self) -> list[int]:
+        """Generate complete list of Pythia checkpoint steps."""
+        checkpoints = [0]
+        log_spaced = [2**i for i in range(10)]
+        step_size = (143000 - 1000) // 142
+        linear_spaced = list(range(1000, 143001, step_size))
+
+        checkpoints.extend(log_spaced)
+        checkpoints.extend(linear_spaced)
+
+        return sorted(list(set(checkpoints)))
+
+    def recover_steps(self, file_path: Path) -> list[int]:
+        """Filter out steps that have already been processed based on JSON keys."""
+        if not file_path.is_file():
+            return self.steps
+
+        try:
+            data = JsonProcessor.load_json(file_path)
+            completed_steps = set()
+
+            if isinstance(data, dict) and "results" in data:
+                for result in data["results"]:
+                    if "step" in result:
+                        completed_steps.add(result["step"])
+            elif isinstance(data, list):
+                for result in data:
+                    if isinstance(result, dict) and "step" in result:
+                        completed_steps.add(result["step"])
+
+            return [step for step in self.steps if step not in completed_steps]
+        except Exception as e:
+            logger.warning(f"Error reading resume file: {e}")
+            return self.steps
+
+
+class JsonProcessor:
+    """Class for handling JSON serialization with NumPy type conversion."""
+
+    @staticmethod
+    def convert_numpy_types(obj: t.Any, _seen: set[int] | None = None) -> t.Any:
+        """Recursively convert NumPy types and custom objects in a nested structure to standard Python types."""
+        if _seen is None:
+            _seen = set()
+
+        obj_id = id(obj)
+        if obj_id in _seen:
+            return f"<circular_reference_to_{type(obj).__name__}>"
+
+        if obj is None:
+            return None
+
+        if (
+            hasattr(obj, "__module__")
+            and obj.__module__
+            and "networkx" in obj.__module__
+        ):
+            class_name = obj.__class__.__name__
+            if "Graph" in class_name:
+                return {
+                    "type": "networkx_graph",
+                    "graph_type": class_name,
+                    "nodes": list(obj.nodes()) if hasattr(obj, "nodes") else [],
+                    "edges": list(obj.edges()) if hasattr(obj, "edges") else [],
+                    "number_of_nodes": obj.number_of_nodes()
+                    if hasattr(obj, "number_of_nodes")
+                    else 0,
+                    "number_of_edges": obj.number_of_edges()
+                    if hasattr(obj, "number_of_edges")
+                    else 0,
+                }
+            return f"<networkx_{class_name}>"
+
+        if hasattr(obj, "__class__") and obj.__class__.__name__ == "SearchResult":
+            _seen.add(obj_id)
+            try:
+                result_dict = {
+                    "neurons": JsonProcessor.convert_numpy_types(obj.neurons, _seen),
+                    "delta_loss": JsonProcessor.convert_numpy_types(
+                        obj.delta_loss, _seen
+                    ),
+                }
+                if hasattr(obj, "is_target_size"):
+                    result_dict["is_target_size"] = obj.is_target_size
+                return result_dict
+            finally:
+                _seen.discard(obj_id)
+
+        if isinstance(obj, np.ndarray):
+            return JsonProcessor.convert_numpy_types(obj.tolist(), _seen)
+
+        if isinstance(obj, (np.floating, np.float16, np.float32, np.float64)):
+            return float(obj)
+        if isinstance(
+            obj,
+            (
+                np.integer,
+                np.int8,
+                np.int16,
+                np.int32,
+                np.int64,
+                np.uint8,
+                np.uint16,
+                np.uint32,
+                np.uint64,
+            ),
+        ):
+            return int(obj)
+        if isinstance(obj, np.bool_):
+            return bool(obj)
+        if isinstance(obj, np.complex128):
+            return complex(obj)
+
+        if isinstance(obj, Path):
+            return str(obj)
+
+        if hasattr(obj, "__class__"):
+            class_name = obj.__class__.__name__
+            if class_name in ["Graph", "DiGraph", "MultiGraph", "MultiDiGraph"]:
+                return {
+                    "type": "networkx_graph",
+                    "graph_type": class_name,
+                    "nodes": list(obj.nodes()),
+                    "edges": list(obj.edges(data=True))
+                    if hasattr(obj, "edges")
+                    else [],
+                    "number_of_nodes": obj.number_of_nodes()
+                    if hasattr(obj, "number_of_nodes")
+                    else 0,
+                    "number_of_edges": obj.number_of_edges()
+                    if hasattr(obj, "number_of_edges")
+                    else 0,
+                }
+            if class_name in [
+                "AdjacencyView",
+                "AtlasView",
+                "NodeView",
+                "EdgeView",
+                "DegreeView",
+            ]:
+                try:
+                    return list(obj) if hasattr(obj, "__iter__") else str(obj)
+                except:
+                    return f"<{class_name}_object>"
+
+        _seen.add(obj_id)
+
+        try:
+            if isinstance(obj, dict):
+                return {
+                    JsonProcessor.convert_numpy_types(
+                        k, _seen
+                    ): JsonProcessor.convert_numpy_types(v, _seen)
+                    for k, v in obj.items()
+                }
+
+            if isinstance(obj, (list, tuple)):
+                converted = [
+                    JsonProcessor.convert_numpy_types(item, _seen) for item in obj
+                ]
+                return converted if isinstance(obj, list) else tuple(converted)
+
+            if isinstance(obj, set):
+                return [JsonProcessor.convert_numpy_types(item, _seen) for item in obj]
+
+            if hasattr(obj, "to_dict") and callable(obj.to_dict):
+                return JsonProcessor.convert_numpy_types(obj.to_dict(), _seen)
+
+            if hasattr(obj, "__dict__") and not isinstance(obj, type):
+                class_name = obj.__class__.__name__
+
+                if any(
+                    nx_type in class_name
+                    for nx_type in ["Graph", "View", "Atlas", "Node", "Edge", "Degree"]
+                ):
+                    return f"<{class_name}_skipped>"
+
+                if class_name in [
+                    "ValidationResult",
+                    "StatisticalTest",
+                    "StatisticalValidator",
+                    "BootstrapEstimator",
+                ]:
+                    safe_dict = {}
+                    for key, value in obj.__dict__.items():
+                        if not key.startswith("_") and key not in [
+                            "graph",
+                            "data",
+                            "samples",
+                            "_seen",
+                        ]:
+                            try:
+                                safe_dict[key] = JsonProcessor.convert_numpy_types(
+                                    value, _seen
+                                )
+                            except (
+                                RecursionError,
+                                TypeError,
+                                AttributeError,
+                                ValueError,
+                            ):
+                                if isinstance(
+                                    value, (int, float, str, bool, type(None))
+                                ):
+                                    safe_dict[key] = value
+                                else:
+                                    safe_dict[key] = str(type(value).__name__)
+                    return safe_dict
+                return JsonProcessor.convert_numpy_types(obj.__dict__, _seen)
+
+            return obj
+
+        finally:
+            _seen.discard(obj_id)
+
+    @classmethod
+    def save_json(cls, data: dict, filepath: Path) -> None:
+        """Save a nested dictionary with float values to a file."""
+        filepath.parent.mkdir(parents=True, exist_ok=True)
+        converted_data = cls.convert_numpy_types(data)
+        with open(filepath, "w") as f:
+            json.dump(converted_data, f, indent=2)
+
+    @staticmethod
+    def load_json(filepath: Path) -> dict:
+        """Load a JSON file into a dictionary."""
+        with open(filepath, encoding="utf-8") as f:
+            return json.load(f)
+
+
+class StepPathProcessor:
+    """Process paths and manage steps for resumable processing."""
+
+    def __init__(self, abl_path: Path):
+        self.abl_path = abl_path
+        self.step_dirs: list[tuple[Path, int]] = []
+
+    def sort_paths(self) -> list[tuple[Path, int]]:
+        """Get the sorted directory by steps in descending order."""
+        step_dirs = []
+        for step in self.abl_path.iterdir():
+            if step.is_dir():
+                try:
+                    step_num = int(step.name)
+                    step_dirs.append((step, step_num))
+                except:
+                    logger.info(f"Something wrong with step {step}")
+
+        step_dirs.sort(key=lambda x: x[1], reverse=True)
+        self.step_dirs = step_dirs
+        return self.step_dirs
+
+    def resume_results(
+        self, resume: bool, save_path: Path, file_path: Path = None
+    ) -> tuple[dict, list[tuple[Path, int]]]:
+        """Resume results from the existing directory list."""
+        if not self.step_dirs:
+            self.sort_paths()
+
+        if resume and save_path.is_file():
+            final_results, remaining_step_dirs = self._get_step_intersection(
+                save_path, self.step_dirs
+            )
+
+            if file_path and file_path.is_file():
+                logger.info(
+                    f"Filter steps from existing neuron index file. Steps before filtering: {len(remaining_step_dirs)}"
+                )
+                _, remaining_step_dirs = self._get_step_intersection(
+                    file_path, remaining_step_dirs
+                )
+                logger.info(f"Steps after filtering: {len(remaining_step_dirs)}")
+
+            logger.info(
+                f"Resume {len(self.step_dirs) - len(remaining_step_dirs)} states from {save_path}."
+            )
+
+            if len(remaining_step_dirs) == 0:
+                logger.info("All steps already processed. Exiting.")
+                sys.exit(0)
+
+            return final_results, remaining_step_dirs
+
+        return {}, self.step_dirs
+
+    def _get_step_intersection(
+        self, file_path: Path, remaining_step_dirs: list[tuple[Path, int]]
+    ) -> list[tuple[Path, int]]:
+        """Resume results from the selected indices."""
+        final_results = JsonProcessor.load_json(file_path)
+        completed_results = list(final_results.keys())
+        remaining_step_dirs = [
+            p for p in self.step_dirs if p[0].name not in completed_results
+        ]
+        return final_results, remaining_step_dirs
+
+
+def load_eval(
+    word_path: Path, min_context: int = 2, debug: bool = False
+) -> tuple[list[str], list[list[str]]]:
+    """Load word and context lists from a JSON file."""
+    data = JsonProcessor.load_json(word_path)
+    target_words = list(data.keys())
+    words = []
+    contexts = []
+
+    for word in target_words:
+        if len(word) > 1:
+            word_contexts = []
+            word_data = data[word]
+            if len(word_data) >= min_context:
+                words.append(word)
+                for context_data in word_data:
+                    word_contexts.append(context_data["context"])
+                contexts.append(word_contexts)
+
+    if debug:
+        target_words, contexts = target_words[:5], contexts[:5]
+        logger.info("Entering debugging mode. Loading first 5 words")
+
+    if not debug:
+        logger.info(f"{len(target_words) - len(words)} words are filtered.")
+        logger.info(f"Loading {len(words)} words.")
+
+    return words, contexts
+
+
+def load_tail_threshold_stat(longtail_path: Path) -> float | None:
+    """Load longtail threshold from the JSON file."""
+    data = JsonProcessor.load_json(longtail_path)
+    return data["threshold_info"]["probability"]
+
+
+def cleanup() -> None:
+    """Release memory after results are no longer needed."""
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
