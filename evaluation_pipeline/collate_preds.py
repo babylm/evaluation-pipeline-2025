@@ -359,12 +359,12 @@ def collate_preds(args: argparse.Namespace) -> None:
         # WUG_ADJ
         wug_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(main_path / "wug_adj" / "wug_adj_nominalization" / "predictions.json")
         assert _check_size("wug_adj", wug_results, True), "The WUG Adjective Nominalization data is incorrect"
-        full_results["wug_adj"] = wug_results
+        full_results["wug_adj_nominalization"] = wug_results
 
         # WUG_PAST
         wug_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(main_path / "wug_past" / "wug_past_tense" / "predictions.json")
         assert _check_size("wug_past", wug_results, True), "The WUG_PAST data is incorrect"
-        full_results["wug_past"] = wug_results
+        full_results["wug_past_tense"] = wug_results
 
         # Reading
         read_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(main_path / "reading" / "predictions.json")

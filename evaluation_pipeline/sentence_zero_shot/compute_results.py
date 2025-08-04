@@ -68,7 +68,10 @@ def rank_and_evaluate(args, subset_to_stats, all_log_probs, raw_sentences, label
 
             if args.save_predictions:
                 num_id_matches = len(predictions[temp][uid])
-                predictions[temp][uid].append({"id" : f"{uid}_{num_id_matches}", "pred" : raw_sentence_dict["completions"][chosen_sentence]})
+                if args.task == "comps":
+                    predictions[temp][uid].append({"id" : f"{uid}_{num_id_matches}", "pred" : raw_sentence_dict["sentences"][chosen_sentence]})
+                else:
+                    predictions[temp][uid].append({"id" : f"{uid}_{num_id_matches}", "pred" : raw_sentence_dict["completions"][chosen_sentence]})
 
 
 def rank_and_evaluate_wug(args, subset_to_stats, all_log_probs, raw_sentences, labels, metadatas, uids, predictions):
