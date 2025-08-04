@@ -21,13 +21,14 @@ def _parse_arguments():
 
     # Required parameters
     parser.add_argument("--data_path", required=True, type=pathlib.Path, help="Path to the data directory")
-    parser.add_argument("--task", required=True, type=str, help="The task that is being evaluated.", choices=["blimp", "ewok", "entity_tracking", "wug", "vqa", "winoground"])
+    parser.add_argument("--task", required=True, type=str, help="The task that is being evaluated.", choices=["blimp", "ewok", "entity_tracking", "wug_adj", "wug_past", "comps", "vqa", "winoground"])
     parser.add_argument("--model_path_or_name", required=True, type=str, help="Path to the model to evaluate.")
     parser.add_argument("--backend", required=True, type=str, help="The evaluation backend strategy", choices=["mlm", "causal", "mntp", "enc_dec_mask", "enc_dec_prefix"])
 
     parser.add_argument("--output_dir", default="results", type=pathlib.Path, help="Path to the data directory")
     parser.add_argument("--images_path", default=None, type=str, help="Path or HuggingFace repository name to the images for the task.")
     parser.add_argument("--image_split", default=None, type=str, help="The data split from a HuggingFace repository to use for the images source.")
+    parser.add_argument("--image_template", default=None, type=str, help="Template of how to imbed the image to the text. (In cases where this is not handled within the model).")
 
     parser.add_argument("--revision_name", default=None, type=str, help="Name of the checkpoint/version of the model to test. (If None, the main will be used)")
 
@@ -108,7 +109,21 @@ def process_results(args: argparse.ArgumentParser, results: dict):
     return accuracies, average_accuracies
 
 
-def create_evaluation_report(temperature: float, avg_accuracy: torch.Tensor, accuracies: dict[str, list[dict[str, float]]], file: TextIOWrapper | None = None) -> None:
+def process_results_wug(results):
+    correlations = {temp : {} for temp in results}
+    avg_correlations = {}
+
+    for temp, temp_results in results.items():
+        correlations[temp]["UID"] = {"avg": temp_results["correlation"]}
+        avg_correlations[temp] = temp_results["correlation"]
+        # for subdomain, subdomain_correlations in temp_results.items():
+        #     correlations[temp][subdomain] = {"avg": subdomain_correlations["correlation"]}
+        #     avg_correlations[temp] = subdomain_correlations["correlation"]
+
+    return correlations, avg_correlations
+
+
+def create_evaluation_report(temperature: float, avg_accuracy: torch.Tensor, accuracies: dict[str, list[dict[str, float]]], task: str | None = None, file: TextIOWrapper | None = None) -> None:
     """This function creates a report and either saves it to a file or prints it to the terminal.
 
     Args:
@@ -120,16 +135,17 @@ def create_evaluation_report(temperature: float, avg_accuracy: torch.Tensor, acc
         file(TextIOWrapper | None): The file to write to results to. (If None, it will printed
             printed to the terminal)
     """
+    metric = "ACCURACY" if task != "wug" else "SPEARMAN'S RHO"
     print(f"TEMPERATURE: {temperature:.2f}", file=file)
     print(file=file)
 
     for domain, accuracy in accuracies.items():
-        print(f"### {domain.upper()} ACCURACY", file=file)
+        print(f"### {domain.upper()} {metric}", file=file)
         for subdomain, acc in accuracy.items():
             print(f"{subdomain}: {acc:.2f}", file=file)
         print(file=file)
 
-    print("### AVERAGE ACCURACY", file=file)
+    print(f"### AVERAGE {metric}", file=file)
     print(f"{avg_accuracy:.2f}", file=file)
     print(file=file)
 
@@ -141,6 +157,8 @@ def save_predictions(args, predictions, best_temp):
 
 def main():
     args = _parse_arguments()
+    if args.images_path is not None:
+        assert args.batch_size == 1, "Multimodal only works in batch size 1!"
     dataset = args.data_path.stem
     args.model_name = pathlib.Path(args.model_path_or_name).stem
     if args.revision_name is None:
@@ -157,7 +175,10 @@ def main():
     results, predictions = compute_results(args, model, dataloader, temperatures)
 
     # Process results
-    accuracies, average_accuracies = process_results(args, results)
+    if "wug" in args.task:
+        accuracies, average_accuracies = process_results_wug(results)
+    else:
+        accuracies, average_accuracies = process_results(args, results)
     best_acc = -1
     best_temp = -1
     for temperature, acc in average_accuracies.items():
@@ -168,9 +189,9 @@ def main():
     print()
 
     # Report and save
-    create_evaluation_report(best_temp, average_accuracies[best_temp], accuracies[best_temp])
+    create_evaluation_report(best_temp, average_accuracies[best_temp], accuracies[best_temp], task=args.task)
     with (args.output_path / "best_temperature_report.txt").open("w") as f:
-        create_evaluation_report(best_temp, average_accuracies[best_temp], accuracies[best_temp], file=f)
+        create_evaluation_report(best_temp, average_accuracies[best_temp], accuracies[best_temp], task=args.task, file=f)
 
     # Save predictions
     if args.save_predictions:

@@ -1,4 +1,4 @@
-from transformers import AutoModelForCausalLM, AutoModelForMaskedLM, AutoTokenizer, AutoModelForSeq2SeqLM
+from transformers import AutoModelForCausalLM, AutoModelForMaskedLM, AutoTokenizer, AutoModelForSeq2SeqLM, AutoProcessor
 from evaluation_pipeline.reading.evaluation_functions import get_p2_mntp, get_p2, get_p2_mlm, get_p2_enc_dec
 from tqdm import tqdm
 import pandas as pd
@@ -18,15 +18,16 @@ def parse_args():
 
     # Required Parameters
     parser.add_argument("--output_dir", default="results", type=pathlib.Path, help="The output directory where the results will be written.")
-    parser.add_argument("--data_path", default="reading/data/reading_data.csv", type=pathlib.Path, help="Path to file containing the lambada dataset, we expect it to be in a JSONL format.")
-    parser.add_argument("--model_path_or_name", default="ltg/gpt-bert-babylm-small", type=pathlib.Path, help="The path/name to/of the huggingface folder/repository.")
-    parser.add_argument("--backend", default="causal", type=str, help="The evaluation backend strategy.", choices=["mlm", "mntp", "causal", "enc_dec"])
+    parser.add_argument("--data_path", required=True, type=pathlib.Path, help="Path to file containing the lambada dataset, we expect it to be in a JSONL format.")
+    parser.add_argument("--model_path_or_name", required=True, type=str, help="The path/name to/of the huggingface folder/repository.")
+    parser.add_argument("--backend", required=True, type=str, help="The evaluation backend strategy.", choices=["mlm", "mntp", "causal", "enc_dec"])
     parser.add_argument("--number_of_mask_tokens_to_append", default=3, type=int, help="When using either mlm or mntp, the number of mask tokens to append to approximate causal generation.")
     parser.add_argument("--revision_name", default=None, type=str, help="Name of the checkpoint/version of the model to test. (If None, the main will be used)")
 
     args = parser.parse_args()
 
-    args.output_dir /= args.model_path_or_name.stem
+    args.model_name = pathlib.Path(args.model_path_or_name).stem
+    args.output_dir /= args.model_name
     if args.revision_name is None:
         args.output_dir /= "main"
     else:
@@ -34,8 +35,6 @@ def parse_args():
     args.output_dir /= "zero_shot"
     args.output_dir /= args.backend
     args.output_dir /= "reading"
-    if args.backend in ["mlm", "mntp"]:
-        args.output_dir /= f"{args.number_of_mask_tokens_to_append}_mask_tokens"
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -57,7 +56,7 @@ if __name__ == "__main__":
 
     model.to(DEVICE)
     model.eval()
-    tokenizer = AutoTokenizer.from_pretrained(args.model_path_or_name, trust_remote_code=True, revision=args.revision_name)
+    tokenizer = AutoProcessor.from_pretrained(args.model_path_or_name, trust_remote_code=True, revision=args.revision_name)
 
     if args.backend == "causal":
         p2_function = get_p2
@@ -93,6 +92,13 @@ if __name__ == "__main__":
     with pred_file.open("w") as fj:
         for index, row in df.iterrows():
             print(json.dumps({"Index": index, "Sentence": row["item"], "Word": row["word"], "Logprob": row["pred"], "Prev_Logprob": row["prev_pred"]}), file=fj)
+
+    pred_file = args.output_dir / "predictions.json"
+    with pred_file.open("w") as fj:
+        preds_dict = {"reading": {"predictions": []}}
+        for index, row in df.iterrows():
+            preds_dict["reading"]["predictions"].append({"id": index, "pred": row["pred"], "prev_pred": row["prev_pred"]})
+        json.dump(preds_dict, fj)
 
     variables = ['RTfirstfix', 'RTfirstpass', 'RTgopast', 'RTrightbound', 'self_paced_reading_time',  'ELAN', 'LAN', 'N400', 'P600', 'EPNP', 'PNP']
 

@@ -1,0 +1,77 @@
+image1,image2,image3,image4,text1
+images/5-eating.png,images/5-kicking.png,images/5-riding.png,images/5-dropping.png,eating
+images/6-picking.png,images/6-running.png,images/6-standing.png,images/6-climbing.png,picking
+images/7-sitting.png,images/7-jumping.png,images/7-pushing.png,images/7-holding.png,sitting
+images/8-running.png,images/8-dancing.png,images/8-drinking.png,images/8-reading.png,running
+images/9-long.png,images/9-short1.png,images/9-short2.png,images/9-short3.png,long
+images/10-tall.png,images/10-boy1.png,images/10-girl1.png,images/10-girl2.png,tall
+images/11-red.png,images/11-blue.png,images/11-pink.png,images/11-yellow.png,red
+images/12-black-horse.png,images/12-brown-horse.png,images/12-grey-dog.png,images/12-yellow-dog.png,black
+images/13-boy-running.png,images/13-cat-sitting.png,images/13-cow-walking.png,images/13-person-sitting.png,the boy is running
+images/14-big-cup.png,images/14-blue-box.png,images/14-pink-cup.png,images/14-purple-box.png,the big cup
+images/15-dog-sitting.png,images/15-dog-eating.png,images/15-girl-sitting.png,images/15-girl-skipping.png,the dog is sitting
+images/16-red-ball.png,images/16-green-comb.png,images/16-purple-ball.png,images/16-red-comb.png,the red ball
+images/17-boy-sitting.png,images/17-boy-running.png,images/17-cat-napping.png,images/17-horse-standing.png,the boy is not running
+images/18-dog-not-drinking.png,images/18-baby-sitting.png,images/18-dog-drinking.png,images/18-girl-standing.png,the dog is not drinking
+images/19-girl-not-jumping.png,images/19-cat-sitting.png,images/19-girl-jumping.png,images/19-horse-standing.png,the girl is not jumping
+images/20-dog-standing.png,images/20-dog-sitting.png,images/20-girl-standing.png,images/20-man-standing.png,the dog is not sitting
+images/21-boy-jump-box.png,images/21-boy-hold-box.png,images/21-boy-run.png,images/21-horse-jump-box.png,the boy is jumping over the box
+images/22-girl-on-table.png,images/22-cat-on-table.png,images/22-girl-at-table.png,images/22-girl-squatting.png,the girl is sitting on the table
+images/23-man-eat-apple.png,images/23-woman-eat-dinner.png,images/23-girl-kick-apple.png,images/23-horse-eat-apple.png,the man is eating the apple
+images/24-woman-carry-bag.png,images/24-woman-drop-bag.png,images/24-dog-carry-bag.png,images/24-woman-carry-chair.png,the lady is carrying the bag
+images/25-2-girls-on-table.png,images/25-boy-on-table.png,images/25-2-people-draw-on-table.png,images/25-2-people-on-carpet.png,they are sitting on the table
+images/26-2-girls-face-cow.png,images/26-two-people-look-at-butterfly.png,images/26-girl-faces-cow.png,images/26-two-boys-ride-cow.png,the cow is looking at them
+images/27-people-jump-wall.png,images/27-boys-jump-grass.png,images/27-girl-jump-wall.png,images/27-girls-behind-wall.png,they are jumping over the wall
+images/28-elephant-carries-them.png,images/28-woman-carries-babies.png,images/28-boy-rides-elephant.png,images/28-run-from-elephant.png,the elephant is carrying them
+images/29-girl-pushes-horse.png,images/29-horse-pushes-girl.png,images/29-boy-rides-horse.png,images/29-girl-pushes-man.png,the girl is pushing the horse
+images/30-boy-chases-sheep.png,images/30-sheep-chases-man.png,images/30-boy-chases-ball.png,images/30-dog-chases-sheep.png,the boy is chasing the sheep
+images/31-man-chases-dog.png,images/31-dog-chases-boy.png,images/31-girl-pets-dog.png,images/31-man-chases-cart.png,the man is chasing the dog
+images/32-cow-pushes-woman.png,images/32-girl-pushes-woman.png,images/32-girl-feeds-cow.png,images/32-girl-pushes-cow.png,the cow is pushing the lady
+images/37-cats-look-ball.png,images/37-kids-play-ball.png,images/37-cat-look-ball.png,images/37-cats-look-butterfly.png,the cats look at the ball
+images/38-guy-on-chairs.png,images/38-dog-on-chairs.png,images/38-guy-lay-on-chairs.png,images/38-guy-on-chair.png,the boy stands on the chairs
+images/39-boys-pick-apples.png,images/39-they-pick-flowers.png,images/39-boy-picks-apples.png,images/39-they-eat-apples.png,the boys pick the apples
+images/40-girl-drops-cups.png,images/40-girl-hold-cup.png,images/40-girl-bounces-balls.png,images/40-girl-drops-cup.png,the girl drops the cups
+images/41-fork-short-pencil.png,images/41-fork-spoon.png,images/41-flower-short-pencil.png,images/41-fork-long-pencil.png,the fork is longer than the pencil
+images/42-box-bigger-cup.png,images/42-box-cup-same.png,images/42-apple-cup-same.png,images/42-box-bigger-ball.png,the box is bigger than the cup
+images/43-shoe-bigger-bird.png,images/43-shoe-bigger-cup.png,images/43-bird-box-same.png,images/43-bird-shoe-same.png,the shoe is bigger than the bird
+images/44-horse-small-wall.png,images/44-tree-wall.png,images/44-feed-horse-apple.png,images/44-horse-large-wall.png,the horse is taller than the wall
+images/45-horse-chase-girl.png,images/45-girl-chase-horse.png,images/45-girl-ride-horse.png,images/45-horse-chase-dog.png,the girl is chased by the horse
+images/46-boy-push-elephant.png,images/46-man-feed-elephant.png,images/46-boy-push-truck.png,images/46-elephant-push-boy.png,the elephant is pushed by the boy
+images/47-boy-chases-horse.png,images/47-girl-rides-horse.png,images/47-horse-chases-boy.png,images/47-dog-chases-horse.png,the horse is chased by the man
+images/48-man-pushes-cow.png,images/48-man-pushes-pram.png,images/48-sheep-pushes-cow.png,images/48-cow-pushes-man.png,the cow is pushed by the man
+images/49-cup-in-box.png,images/49-cup-on-box.png,images/49-box-in-cup.png,images/49-cup-beside-box.png,the cup is in the box
+images/50-pencil-on-box.png,images/50-pencil-under-box.png,images/50-pencil-beside-box.png,images/50-pencil-in-box.png,the pencil is on the box
+images/51-circle-in-star.png,images/51-star-below-circle.png,images/51-star-in-circle.png,images/51-circle-beside-star.png,the circle is in the star
+images/52-fork-on-boot.png,images/52-fork-under-boot.png,images/52-fork-beside-boot.png,images/52-fork-in-boot.png,the fork is on the shoe
+images/53-tall-boy-chases-horse.png,images/53-horse-chases-tall-boy.png,images/53-boy-chases-horse.png,images/53-horse-chases-boy.png,the boy chasing the horse is tall
+images/54-blue-pencil-on-boot.png,images/54-boot-on-yellow-pencil.png,images/54-yellow-pencil-on-boot.png,images/54-boot-on-blue-pencil.png,the pencil on the shoe is blue
+images/55-brown-cow-chase-white-cat.png,images/55-white-cat-chase-brown-cow.png,images/55-white-cow-chase-brown-cat.png,images/55-brown-cat-chase-white-cow.png,the cow chasing the cat is brown
+images/56-yellow-circle-in-star.png,images/56-yellow-star-in-circle.png,images/56-green-star-below-circle.png,images/56-star-beside-circle.png,the circle in the star is yellow
+images/57-green-chair-red-box.png,images/57-red-chair-green-box.png,images/57-red-chair-red-box.png,images/57-green-chair-green-box.png,the box but not the chair is red
+images/58-big-white-cat.png,images/58-little-black-cat.png,images/58-little-white-cat.png,images/58-big-black-cat.png,the cat is big but not black
+images/59-boy-jumps-horse-stands.png,images/59-horse-and-boy-stand.png,images/59-horse-jumps-boy-stands.png,images/59-horse-and-boy-jump.png,the horse but not the boy is standing
+images/60-sitting-boy.png,images/60-sitting-person-banana.png,images/60-standing-man-banana.png,images/60-standing-woman.png,the boy is sitting but not eating
+images/61-pencil-above-flower.png,images/61-flower-behind-pencil.png,images/61-pencil-beside-flower.png,images/61-flower-above-pencil.png,the pencil is above the flower
+images/62-green-comb-below-spoon.png,images/62-red-comb-beside-spoon.png,images/62-yellow-comb-above-spoon.png,images/62-yellow-comb-beside-spoon.png,the comb is below the spoon
+images/63-star-above-circle.png,images/63-small-star-beside-circle.png,images/63-star-below-circle.png,images/63-purple-star-beside-circle.png,the star is above the circle
+images/64-square-below-star.png,images/64-square-beside-star.png,images/64-square-beside-star2.png,images/64-square-above-star.png,the square is below the star
+images/65-bird-blue-flower-blue.png,images/65-bird-white-flower-blue.png,images/65-bird-white-flower-white.png,images/65-bird-blue-flower-white.png,not only the bird but also the flower is blue
+images/66-big-blue-box.png,images/66-big-pink-box.png,images/66-small-blue-box.png,images/66-small-pink-box.png,the box is not only big but also blue
+images/69-pencil-on-yellow-book.png,images/69-red-book-on-pencil.png,images/69-yellow-book-on-pencil.png,images/69-pencil-on-red-book.png,the pencil is on the book that is yellow
+images/70-girl-chases-big-dog.png,images/70-girl-chases-small-dog.png,images/70-girl-chases-small-dog2.png,images/70-dog-chases-girl.png,the girl chases the dog that is big
+images/71-yellow-square-in-star.png,images/71-blue-star-in-square.png,images/71-star-in-blue-square.png,images/71-blue-square-in-star.png,the square is in the star that is blue
+images/72-white-dog-chase-brown-horse.png,images/72-brown-horse-chase-white-dog.png,images/72-white-horse-chase-brown-dog.png,images/72-brown-dog-chase-white-horse.png,the dog chases the horse that is brown
+images/73-white-dog-white-ball.png,images/73-brown-dog-white-ball.png,images/73-white-dog-brown-ball.png,images/73-brown-ball-brown-dog.png,neither the dog nor the ball is brown
+images/74-short-green-pencil.png,images/74-long-red-pencil.png,images/74-short-red-pencil.png,images/74-long-green-pencil.png,the pencil is neither long nor red
+images/75-boy-before-horse.png,images/75-boy-behind-horse.png,images/75-boy-chases-horse.png,images/75-girl-chases-horse.png,neither the boy nor the horse is running
+images/76-no-hat-no-shoes.png,images/76-hat-no-shoes.png,images/76-shoes-no-hat.png,images/76-hat-and-shoes.png,the boy has neither hat nor shoes
+images/77-pencil-on-red-book.png,images/77-pencil-on-green-book.png,images/77-red-book-on-pencil.png,images/77-green-book-on-pencil.png,the book the pencil is on is red
+images/78-white-cow-chase-black-cat.png,images/78-black-cow-chase-white-cat.png,images/78-white-cat-chase-black-cow.png,images/78-black-cat-chase-white-cow.png,the cat the cow chases is black
+images/79-star-in-red-circle.png,images/79-red-circle-in-star.png,images/79-star-below-red-circle.png,images/79-star-beside-circle.png,the circle the star is in is red
+images/80-dog-chases-tall-boy.png,images/80-dog-chases-small-boy.png,images/80-small-boy-chases-dog.png,images/80-tall-boy-chases-dog.png,the boy the dog chases is big
+images/81-horse-water-barn-sheep-grass.png,images/81-horse-sheep-grass.png,images/81-horse-sheep-water-barn.png,images/81-sheep-water.png,the horse drank water by the barn and the sheep ate grass by the fence
+images/83-picnic-sunny-park.png,images/83-picnic-island-rainy.png,images/83-picnic-island-sunny.png,images/83-picnic-park-rainy.png,we will have a picnic in the park if it is sunny
+images/84-keys-under-couch-pillows.png,images/84-keys-on-couch.png,images/84-keys-on-couch-pillows.png,images/84-keys-under-couch-no-pillows.png,he found his keys under the couch with the pillows
+images/85-gardener-flower-hat-on.png,images/85-gardener-flower-hat-off.png,images/85-gardener-flower-hat-off2.png,images/85-gardener-hat.png,she is the gardener who wears the hat that has a flower
+images/88-play-guitar-dance.png,images/88-carry-guitar-dance.png,images/88-carry-guitar-guy-dances.png,images/88-play-guitars-dance.png,we will dance together if someone is playing music
+images/90-they-play-soccer.png,images/90-he-plays-soccer.png,images/90-he-swims.png,images/90-they-swim.png,"he likes swimming, however, he chose to play soccer with his friends"

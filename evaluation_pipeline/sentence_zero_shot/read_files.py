@@ -70,10 +70,12 @@ def decode(line: str, file_name: pathlib.Path, task: str, full_sentence_scores: 
         data_dict = decode_blimp(raw_dict, file_name)
     elif task == "ewok":
         data_dict = decode_ewok(raw_dict, full_sentence_scores)
-    elif task == "wug":
-        data_dict = decode_wug_adj_nominalization(raw_dict)
+    elif "wug" in task:
+        data_dict = decode_wug(raw_dict, task)
     elif task == "entity_tracking":
         data_dict = decode_entity_tracking(raw_dict, file_name)
+    elif task == "comps":
+        data_dict = decode_comps(raw_dict, file_name)
     elif task == "vqa":
         data_dict = decode_vqa(raw_dict, images)
     elif task == "winoground":
@@ -156,7 +158,7 @@ def decode_ewok(raw_dict: dict[str, Any], full_sentence_scores: bool) -> dict[st
     return pair
 
 
-def decode_wug_adj_nominalization(raw_dict: dict[str, Any]) -> dict[str, str]:
+def decode_wug(raw_dict: dict[str, Any], task: str) -> dict[str, str]:
     """This function takes a dictionary of a single datapoint
     of the wug test datafile and returns a dictionary of terms
     to be used by the evaluation.
@@ -177,7 +179,7 @@ def decode_wug_adj_nominalization(raw_dict: dict[str, Any]) -> dict[str, str]:
         "completions": raw_dict["sentences"].split('\t'),
         "ratio": float(raw_dict["ratio"]),
         "label": 0,
-        "UID": "wug_adj_nominalization",
+        "UID": task,
     }
 
     return pair
@@ -208,6 +210,37 @@ def decode_entity_tracking(raw_dict: dict[str, Any], file_name: pathlib.Path) ->
     return pair
 
 
+def decode_comps(raw_dict: dict[str, Any], file_name: pathlib.Path) -> dict[str, str]:
+    """This function takes a dictionary of a single datapoint of a COMPS datafile
+    and returns a dictionary of terms to be used by the evaluation.
+
+    Args:
+        raw_dict(dict[str, Any]): A dictionary from a single datapoint of a
+            COMPS datafile.
+
+    Returns:
+        dict[str, str]: A dictionary with values used for evaluation
+    """
+    acceptable_sentence = " ".join([raw_dict["prefix_acceptable"], raw_dict["property_phrase"]])
+    unacceptable_sentence = " ".join([raw_dict["prefix_unacceptable"], raw_dict["property_phrase"]])
+    if file_name.stem == "comps_base":
+        subset = "base"
+    elif file_name.stem == "comps_wugs":
+        subset = "wugs"
+    elif file_name.stem == "comps_wugs_dist-before":
+        subset = "wugs_dist_before"
+    else:
+        subset = "wugs_dist_in_between"
+    pair = {
+        "sentences" : [acceptable_sentence, unacceptable_sentence],
+        "prefixes" : [raw_dict["prefix_acceptable"], raw_dict["prefix_unacceptable"]],
+        "completions" : [raw_dict["property_phrase"], raw_dict["property_phrase"]],
+        "label" : 0,
+        "UID" : subset
+    }
+    return pair
+
+
 def decode_vqa(raw_dict: dict[str, Any], images: Dataset) -> dict[str, str]:
     """This function takes a dictionary of a single datapoint
     of the VQA dataset and the associated image and returns a
@@ -229,8 +262,9 @@ def decode_vqa(raw_dict: dict[str, Any], images: Dataset) -> dict[str, str]:
         "completions": [" " + raw_dict["target_ans"]] + [" " + answer for answer in raw_dict["distractors"]],
         "label": 0,
         "UID": "VQA",
-        "image": images[raw_dict["idx_in_hf_dataset"]]["image"].convert("RGB"),
     }
+    if images is not None:
+        pair["image"] = images[raw_dict["idx_in_hf_dataset"]]["image"].convert("RGB")
 
     return pair
 
@@ -251,15 +285,16 @@ def decode_winoground(raw_dict: dict[str, Any], images: Dataset) -> dict[str, st
             evaluation.
     """
     pair = {
-        "sentences": [raw_dict["caption_0"], raw_dict["caption_1"]],
-        "prefixes": [None, None],
-        "completions": [raw_dict["caption_0"], raw_dict["caption_1"]],
-        "label": 0,
-        "UID": "WinoGround",
-        "Type": raw_dict["collapsed_tag"],
-        "Linguistic Feature": raw_dict["tag"],
-        "Linguistic Sub-Feature": " ".join([raw_dict["tag"], raw_dict["secondary_tag"]]),
-        "image": images[raw_dict["image_idx"]][raw_dict["image_key"]].convert("RGB"),
-    }
+            "sentences": [raw_dict["caption_0"], raw_dict["caption_1"]],
+            "prefixes": [None, None],
+            "completions": [raw_dict["caption_0"], raw_dict["caption_1"]],
+            "label": 0,
+            "UID": "WinoGround",
+            "Type": raw_dict["collapsed_tag"],
+            "Linguistic Feature": raw_dict["tag"],
+            "Linguistic Sub-Feature": " ".join([raw_dict["tag"], raw_dict["secondary_tag"]]),
+        }
+    if images is not None:
+        pair["image"] = images[raw_dict["image_idx"]][raw_dict["image_key"]].convert("RGB")
 
     return pair

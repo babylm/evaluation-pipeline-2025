@@ -6,6 +6,7 @@ import torch
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
+from scipy.stats import spearmanr
 import math
 from collections import Counter, defaultdict
 from tqdm import tqdm
@@ -67,7 +68,34 @@ def rank_and_evaluate(args, subset_to_stats, all_log_probs, raw_sentences, label
 
             if args.save_predictions:
                 num_id_matches = len(predictions[temp][uid])
-                predictions[temp][uid].append({"id" : f"{uid}_{num_id_matches}", "pred" : raw_sentence_dict["completions"][chosen_sentence]})
+                if args.task == "comps":
+                    predictions[temp][uid].append({"id" : f"{uid}_{num_id_matches}", "pred" : raw_sentence_dict["sentences"][chosen_sentence]})
+                else:
+                    predictions[temp][uid].append({"id" : f"{uid}_{num_id_matches}", "pred" : raw_sentence_dict["completions"][chosen_sentence]})
+
+
+def rank_and_evaluate_wug(args, subset_to_stats, all_log_probs, raw_sentences, labels, metadatas, uids, predictions):
+    """Creates the model-human correlations of the morphological wug tasks. """
+    for temp, temp_dict in subset_to_stats.items():
+        stacked_probs = torch.stack(all_log_probs[temp], dim=1)
+        chosen_sentences = torch.max(stacked_probs, dim=1)[1].tolist()
+
+        stacked_probs = torch.nn.functional.softmax(stacked_probs, dim=1)
+        model_ratios = []
+        human_ratios = []
+
+        for raw_sentence_dict, chosen_sentence, label, metadata, uid, prob in zip(raw_sentences, chosen_sentences, labels, metadatas, uids, stacked_probs[:, 0]):
+            model_ratios.append(prob)
+            human_ratios.append(metadata['ratio'])
+
+            if args.save_predictions:
+                num_id_matches = len(predictions[temp][uid])
+                prediction = {"id": f"{uid}_{num_id_matches}", "pred": raw_sentence_dict["completions"][chosen_sentence]}
+                prediction["prob"] = prob.item()
+
+                predictions[temp][uid].append(prediction)
+
+        temp_dict["correlation"] = spearmanr(model_ratios, human_ratios)[0]
 
 
 def compute_causal_results(args, model, dataloader, temperatures):
@@ -102,13 +130,19 @@ def compute_causal_results(args, model, dataloader, temperatures):
             else:
                 logits = logits["logits"]  # BxTxV
 
+            if logits.size(1) != sentence_dict[f"{prefix}_inputs"].size(1):  # Assumption is that images are prepended to the text when done post-tokenization.
+                logits = logits[:, -sentence_dict[f"{prefix}_inputs"].size(1):]
+
             for temp in subset_to_stats:
                 log_probs = F.log_softmax(logits / temp, dim=-1)
                 target_log_probs = torch.gather(log_probs, -1, sentence_dict[f"{prefix}_targets"].to(DEVICE).unsqueeze(-1)).squeeze(-1)
                 phrase_log_probs = torch.sum(target_log_probs * sentence_dict[f"{prefix}_phrase_mask"].to(DEVICE), dim=1)
                 all_log_probs[temp].append(phrase_log_probs.cpu())
 
-        rank_and_evaluate(args, subset_to_stats, all_log_probs, raw_sentences, labels, metadatas, uids, predictions)
+        if "wug" in args.task:
+            rank_and_evaluate_wug(args, subset_to_stats, all_log_probs, raw_sentences, labels, metadatas, uids, predictions)
+        else:
+            rank_and_evaluate(args, subset_to_stats, all_log_probs, raw_sentences, labels, metadatas, uids, predictions)
 
     if args.save_predictions:
         for i in temperatures:
@@ -167,6 +201,9 @@ def compute_mlm_results(args, model, dataloader, temperatures):
                 else:
                     logits = logits["logits"]  # BxTxV
 
+                if logits.size(1) != sentence_dict[f"{prefix}_tokens"].size(1):  # Assumption is that images are prepended to the text when done post-tokenization.
+                    logits = logits[:, -sentence_dict[f"{prefix}_tokens"].size(1):]
+
                 minibatch_indices = torch.arange(logits.shape[0]).to(DEVICE)
                 masked_logits = logits[minibatch_indices, indices]  # BxV
 
@@ -188,7 +225,10 @@ def compute_mlm_results(args, model, dataloader, temperatures):
                     curr_idx += examples_per_batch
                 all_log_probs[temp].append(torch.tensor(summed_log_probs))
 
-        rank_and_evaluate(args, subset_to_stats, all_log_probs, raw_sentences, labels, metadatas, uids, predictions)
+        if "wug" in args.task:
+            rank_and_evaluate_wug(args, subset_to_stats, all_log_probs, raw_sentences, labels, metadatas, uids, predictions)
+        else:
+            rank_and_evaluate(args, subset_to_stats, all_log_probs, raw_sentences, labels, metadatas, uids, predictions)
 
     if args.save_predictions:
         for i in temperatures:
@@ -248,11 +288,11 @@ def compute_enc_dec_mask_results(args, model, dataloader, temperatures):
                         pixel_values=images.to(DEVICE),
                     )
                 if isinstance(logits, tuple):
-                    logits = logits[0]  # Bx1xV
+                    logits = logits[0]  # BxTxV
                 else:
-                    logits = logits["logits"]  # Bx1xV
+                    logits = logits["logits"]  # BxTxV
 
-                masked_logits = logits[:, 0]  # BxV
+                masked_logits = logits[:, -1]  # BxV
 
                 for temp in subset_to_stats:
                     log_probs = F.log_softmax(masked_logits / temp, dim=-1)
@@ -272,7 +312,10 @@ def compute_enc_dec_mask_results(args, model, dataloader, temperatures):
                     curr_idx += examples_per_batch
                 all_log_probs[temp].append(torch.tensor(summed_log_probs))
 
-        rank_and_evaluate(args, subset_to_stats, all_log_probs, raw_sentences, labels, metadatas, uids, predictions)
+        if "wug" in args.task:
+            rank_and_evaluate_wug(args, subset_to_stats, all_log_probs, raw_sentences, labels, metadatas, uids, predictions)
+        else:
+            rank_and_evaluate(args, subset_to_stats, all_log_probs, raw_sentences, labels, metadatas, uids, predictions)
 
     if args.save_predictions:
         for i in temperatures:
@@ -323,11 +366,15 @@ def compute_enc_dec_prefix_results(args, model, dataloader, temperatures):
 
             for temp in subset_to_stats:
                 log_probs = F.log_softmax(logits / temp, dim=-1)
-                target_log_probs = torch.gather(log_probs, -1, sentence_dict[f"{prefix}_targets"].to(DEVICE).unsqueeze(-1)).squeeze(-1)
+                start_pred_token = log_probs.size(1) - sentence_dict[f"{prefix}_targets"].size(1)
+                target_log_probs = torch.gather(log_probs[:, start_pred_token:], -1, sentence_dict[f"{prefix}_targets"].to(DEVICE).unsqueeze(-1)).squeeze(-1)
                 phrase_log_probs = torch.sum(target_log_probs * sentence_dict[f"{prefix}_phrase_mask"].to(DEVICE), dim=1)
                 all_log_probs[temp].append(phrase_log_probs.cpu())
 
-        rank_and_evaluate(args, subset_to_stats, all_log_probs, raw_sentences, labels, metadatas, uids, predictions)
+        if "wug" in args.task:
+            rank_and_evaluate_wug(args, subset_to_stats, all_log_probs, raw_sentences, labels, metadatas, uids, predictions)
+        else:
+            rank_and_evaluate(args, subset_to_stats, all_log_probs, raw_sentences, labels, metadatas, uids, predictions)
 
     if args.save_predictions:
         for i in temperatures:

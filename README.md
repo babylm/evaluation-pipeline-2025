@@ -21,6 +21,11 @@ We have added a couple of new tasks to the text-only evaluation suite:
 
 From last years iteration we are still including BLiMP, EWoK, and GLUE for evaluation.
 
+## Hidden Tasks
+
+- **Derivational Morphology Reveals Analogical Generalization in Large Language Models** [(Hofmann et al., 2024)](https://arxiv.org/abs/2411.07990) (WUG_ADJ & WUG_PAST) [Weissweiler et al. (2023)](https://aclanthology.org/2023.cxgsnlp-1.10/) introduce a task for testing morphological generalization, based on a past tense formation task of nonce ("wug") words. We evaluate this task against human predictions: from the participant responses we derive a distribution over possible inflections. This way we can test the "humanlikeness" of a model's generalization behavior, by correlating the model's probability for each inflection against the relative amount of responses we can measure whether they follow similar morphological patterns. [Hoffman et al. (2024)](https://arxiv.org/abs/2411.07990) build on this work and introduce a similar task for adjective nominalization, in which a nonce ("wug") adjective is nominalized as either an -ity noun or a -ness noun. Performance is measure in the same way, by correlating model probabilities to human judgments.
+- **COMPS: Conceptual Minimal Pair Sentences for testing Robust Property Knowledge and its Inheritance in Pre-trained Language Models** [(Misra et al., 2023)](https://aclanthology.org/2023.eacl-main.213/) (COMPS) [Misra et al. (2023)](https://aclanthology.org/2023.eacl-main.213/) introduce a task for testing the property knowledge of language models and whether they can infer that properties of superordinate concepts are inherited by subordinate concepts, each represented by nonce words. The dataset is composed of minimal pair sentences and models are evaluated by whether they assign higher probability to the correct sentence.
+
 ## Install
 
 > [!Note]
@@ -281,8 +286,23 @@ For the submiting the checkpoints we encourage creating multiple branches in a H
 This year we require both the evaluation of the final model, on a set of full evaluation (which include the finetuning). And the evaluation of all the checkpoints mentioned above (or up until the one you trained, if for example you only train for 20M words then we require: 1M, 2M, ..., 10M, 20M) on a set of fast tasks, that do not include finetuning and are a subsampled set of the full evaluations.
 
 ### Submission Format
-> [!Note]
-> To Be Announced!
+To create a submission file to the leaderboard or challenge use the following command:
+```bash
+python -m evaluation_pipeline.collate_preds --model_path_or_name=NAME_OF_YOUR_MODEL --backend=BACKEND
+```
+you can use the flag `--fast` to collate the results for the fast evaluations.
+Make sure that all the evaluations have been run before collating them.
+
+
+The submission is a JSON file where the first key represents the benchmark, the next the task of the benchmark, and the value either the label as a number (for GLUE tasks) or the predicted sentences for the zero-shot tasks. An example is:
+
+```
+{"glue": {"boolq": {"predictions": [{"id": "boolq_0", "pred": 0}, {"id": "boolq_1", "pred": 1}, ...]}}}
+```
+
+### Leaderboard
+You can find the leaderboard for the non-hidden tasks [here](https://huggingface.co/spaces/BabyLM-community/babylm-leaderboard-2025-no-hidden-tasks).
+
 
 ----
 ## Visualizing Results

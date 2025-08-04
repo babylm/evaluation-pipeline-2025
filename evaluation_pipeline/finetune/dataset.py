@@ -265,7 +265,7 @@ class PredictDataset(torch.utils.data.Dataset):
         """
         texts = []
 
-        for text, label in data:
+        for text in data:
             texts.append(text)
 
         encodings = tokenizer(texts, return_tensors="pt", padding=True, truncation=True, max_length=max_length)
