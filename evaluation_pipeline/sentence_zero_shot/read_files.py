@@ -261,7 +261,7 @@ def decode_vqa(raw_dict: dict[str, Any], images: Dataset) -> dict[str, str]:
         "prefixes": [raw_dict["question"] for _ in range(len(raw_dict["distractors"]) + 1)],
         "completions": [" " + raw_dict["target_ans"]] + [" " + answer for answer in raw_dict["distractors"]],
         "label": 0,
-        "UID": "VQA",
+        "UID": "vqa",
     }
     if images is not None:
         pair["image"] = images[raw_dict["idx_in_hf_dataset"]]["image"].convert("RGB")
@@ -289,7 +289,7 @@ def decode_winoground(raw_dict: dict[str, Any], images: Dataset) -> dict[str, st
             "prefixes": [None, None],
             "completions": [raw_dict["caption_0"], raw_dict["caption_1"]],
             "label": 0,
-            "UID": "WinoGround",
+            "UID": "winoground",
             "Type": raw_dict["collapsed_tag"],
             "Linguistic Feature": raw_dict["tag"],
             "Linguistic Sub-Feature": " ".join([raw_dict["tag"], raw_dict["secondary_tag"]]),

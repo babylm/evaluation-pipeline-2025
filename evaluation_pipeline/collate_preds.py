@@ -281,6 +281,7 @@ def _check_size(task: str, results: dict[str, dict[str, list[dict[str, str | int
     valid = True
 
     for key, res in results.items():
+        key = key.lower()
         if fast:
             if task == "entity_tracking":
                 if len(res["predictions"]) != FAST_SIZES[task][key]:
