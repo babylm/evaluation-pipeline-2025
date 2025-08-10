@@ -4,6 +4,13 @@ import json
 import pathlib
 import argparse
 import numpy as np
+from scipy.stats import spearmanr, pearsonr
+from collections import defaultdict
+import pandas as pd
+import statsmodels.formula.api as smf
+
+STRICT_SMALL_FAST_REVISIONS = [f"chck_{i}M" for i in range(1, 10)] + [f"chck_{i*10}M" for i in range(1, 11)]
+OTHER_FAST_REVISIONS = [f"chck_{i}M" for i in range(1, 10)] + [f"chck_{i*10}M" for i in range(1, 10)] + [f"chck_{i*100}M" for i in range(1, 11)]
 
 BLIMP_FAST_SIZE = 200
 SUPPLEMENT_FAST_SIZE = 50
@@ -22,7 +29,7 @@ BLIMP_SIZES = {
     'superlative_quantifiers_2': 986,
     'superlative_quantifiers_1': 979,
     'anaphor_gender_agreement': 971,
-    'principle_A_reconstruction': 967,
+    'principle_a_reconstruction': 967,
     'irregular_past_participle_adjectives': 961,
     'sentential_subject_island': 961,
     'wh_island': 960,
@@ -30,11 +37,11 @@ BLIMP_SIZES = {
     'coordinate_structure_constraint_object_extraction': 949,
     'tough_vs_raising_1': 948,
     'left_branch_island_echo_question': 947,
-    'principle_A_c_command': 946,
+    'principle_a_c_command': 946,
     'regular_plural_subject_verb_agreement_2': 945,
     'irregular_past_participle_verbs': 942,
     'determiner_noun_agreement_with_adj_2': 941,
-    'principle_A_domain_3': 941,
+    'principle_a_domain_3': 941,
     'determiner_noun_agreement_with_adjective_1': 933,
     'anaphor_number_agreement': 931,
     'determiner_noun_agreement_2': 931,
@@ -48,11 +55,11 @@ BLIMP_SIZES = {
     'tough_vs_raising_2': 920,
     'wh_vs_that_with_gap': 919,
     'sentential_negation_npi_licensor_present': 919,
-    'principle_A_case_2': 915,
-    'principle_A_domain_2': 915,
-    'principle_A_domain_1': 914,
+    'principle_a_case_2': 915,
+    'principle_a_domain_2': 915,
+    'principle_a_domain_1': 914,
     'npi_present_2': 914,
-    'principle_A_case_1': 912,
+    'principle_a_case_1': 912,
     'existential_there_quantifiers_2': 911,
     'wh_vs_that_with_gap_long_distance': 910,
     'npi_present_1': 909,
@@ -72,7 +79,7 @@ BLIMP_SIZES = {
     'wh_questions_object_gap': 859,
     'wh_questions_subject_gap_long_distance': 857,
     'inchoative': 855,
-    'complex_NP_island': 846,
+    'complex_np_island': 846,
     'passive_1': 840,
     'determiner_noun_agreement_with_adj_irregular_2': 840,
     'only_npi_scope': 837,
@@ -177,19 +184,32 @@ def _parse_arguments() -> argparse.Namespace:
 
     parser.add_argument("--results_dir", default="results", type=pathlib.Path, help="Path to the results directory.")
     parser.add_argument("--revision_name", default="main", type=str, help="Name of the checkpoint/version of the model to test.")
-    parser.add_argument("--fast", action="store_true", help="Whether to get the fast evaluation instead of the fast.")
+    parser.add_argument("--fast", action="store_true", help="Whether to get the include fast evaluation results in the collated output.")
+    parser.add_argument('--fast_eval_dir', type=pathlib.Path, default=pathlib.Path("evaluation_data/fast_eval"),
+                        help="Path to the evaluation data")
+    parser.add_argument("--strict_small", action="store_true", help="Whether we are collating fast evaluation results for a strict-small submission.")
     parser.add_argument("--multimodal", action="store_true", help="Whether mutlimodal evaluation was done.")
 
     return parser.parse_args()
 
 
-def _check_validity_of_dir(args: argparse.Namespace) -> bool:
-    finetune_path = args.results_dir / args.model_path_or_name.stem / args.revision_name / "finetune"
-    zero_shot_path = args.results_dir / args.model_path_or_name.stem / args.revision_name / "zero_shot" / args.backend
-    devbench_path = args.results_dir / args.model_path_or_name.stem / args.revision_name / "zero_shot"
+def _check_validity_of_dirs(args):
+    # First check the validity of the full evaluation directory
+    assert _check_validity_of_dir(args, args.revision_name, fast=False), "The directory for full results is incorrect, please fix the errors!"
+
+    # Next check the validity of the fast evaluation directories
+    if args.fast:
+        revision_list = STRICT_SMALL_FAST_REVISIONS if args.strict_small else OTHER_FAST_REVISIONS
+        for revision_name in revision_list:
+            assert _check_validity_of_dir(args, revision_name, fast=True), f"The directory for revision {revision_name} is incorrect for fast evals, please fix the errors!"
+
+def _check_validity_of_dir(args: argparse.Namespace, revision_name: str, fast: bool) -> bool:
+    finetune_path = args.results_dir / args.model_path_or_name.stem / revision_name / "finetune"
+    zero_shot_path = args.results_dir / args.model_path_or_name.stem / revision_name / "zero_shot" / args.backend
+    devbench_path = args.results_dir / args.model_path_or_name.stem / revision_name / "zero_shot"
     valid = True
 
-    if args.fast:
+    if fast:
         if not (zero_shot_path / "blimp" / "blimp_fast" / "predictions.json").exists():
             print("The blimp data is missing!")
             valid = False
@@ -328,142 +348,259 @@ def _load_results_devbench(path: pathlib.Path) -> np.array[float]:
     results = np.load(path)
     return results
 
+def collate_preds(args: argparse.Namespace) -> None: 
+    _check_validity_of_dirs(args)
 
-def collate_preds(args: argparse.Namespace) -> None:
-    assert _check_validity_of_dir(args), "The directory is incorrect, please fix the errors!"
+    # Collate main evaluation preds
+    full_results = collate_full_eval_preds(args)
 
+    # Add metrics for fast evals
     if args.fast:
-        full_results = {}
-        main_path: pathlib.Path = args.results_dir / args.model_path_or_name.stem / args.revision_name / "zero_shot" / args.backend
-        output_path: pathlib.Path = args.results_dir / args.model_path_or_name.stem / args.revision_name / f"all_fast_preds_{args.backend}.json"
+        fast_eval_results = get_fast_eval_metrics(args)
+        full_results["fast_eval_results"] = fast_eval_results
 
-        # BLiMP
-        blimp_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(main_path / "blimp" / "blimp_fast" / "predictions.json")
-        assert _check_size("blimp", blimp_results, True), "The BLiMP Fast data is incorrect"
-        full_results["blimp"] = blimp_results
+    output_path: pathlib.Path = args.results_dir / args.model_path_or_name.stem / f"all_full_preds_and_fast_scores_{args.backend}.json"
+    result_dicts = [full_results, fast_eval_results]
+    with output_path.open("w") as f:
+        json.dump(full_results, f)
 
-        # BLiMP Supplement
-        bsupp_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(main_path / "blimp" / "supplement_fast" / "predictions.json")
-        assert _check_size("blimp_supplement", bsupp_results, True), "The BLiMP Supplement Fast data is incorrect"
-        full_results["blimp_supplement"] = bsupp_results
+def collate_full_eval_preds(args):
+    full_results = {}
+    zero_main_path: pathlib.Path = args.results_dir / args.model_path_or_name.stem / args.revision_name / "zero_shot" / args.backend
+    devbench_path: pathlib.Path = args.results_dir / args.model_path_or_name.stem / args.revision_name / "zero_shot"
+    fine_main_path: pathlib.Path = args.results_dir / args.model_path_or_name.stem / args.revision_name / "finetune"
 
-        # EWoK
-        ewok_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(main_path / "ewok" / "ewok_fast" / "predictions.json")
-        assert _check_size("ewok", ewok_results, True), "The EWoK Fast data is incorrect"
-        full_results["ewok"] = ewok_results
+    # BLiMP
+    blimp_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(zero_main_path / "blimp" / "blimp_filtered" / "predictions.json")
+    assert _check_size("blimp", blimp_results, fast=False), "The BLiMP data is incorrect"
+    full_results["blimp"] = blimp_results
 
-        # Entity Tracking
-        et_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(main_path / "entity_tracking" / "entity_tracking_fast" / "predictions.json")
-        assert _check_size("entity_tracking", et_results, True), "The Entity Tracking Fast data is incorrect"
-        full_results["entity_tracking"] = et_results
+    # BLiMP Supplement
+    bsupp_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(zero_main_path / "blimp" / "supplement_filtered" / "predictions.json")
+    assert _check_size("blimp_supplement", bsupp_results, fast=False), "The BLiMP Supplement data is incorrect"
+    full_results["blimp_supplement"] = bsupp_results
 
-        # WUG_ADJ
-        wug_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(main_path / "wug_adj" / "wug_adj_nominalization" / "predictions.json")
-        assert _check_size("wug_adj", wug_results, True), "The WUG Adjective Nominalization data is incorrect"
-        full_results["wug_adj_nominalization"] = wug_results
+    # EWoK
+    ewok_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(zero_main_path / "ewok" / "ewok_filtered" / "predictions.json")
+    assert _check_size("ewok", ewok_results, fast=False), "The EWoK data is incorrect"
+    full_results["ewok"] = ewok_results
 
-        # WUG_PAST
-        wug_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(main_path / "wug_past" / "wug_past_tense" / "predictions.json")
-        assert _check_size("wug_past", wug_results, True), "The WUG_PAST data is incorrect"
-        full_results["wug_past_tense"] = wug_results
+    # Entity Tracking
+    et_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(zero_main_path / "entity_tracking" / "entity_tracking" / "predictions.json")
+    assert _check_size("entity_tracking", et_results, fast=False), "The Entity Tracking data is incorrect"
+    full_results["entity_tracking"] = et_results
 
-        # Reading
-        read_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(main_path / "reading" / "predictions.json")
-        assert _check_size("reading", read_results, True), "The Reading data is incorrect"
-        full_results["reading"] = read_results
+    # WUG_ADJ
+    wug_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(zero_main_path / "wug_adj" / "wug_adj_nominalization" / "predictions.json")
+    assert _check_size("wug_adj", wug_results, fast=False), "The WUG Adjective Nominalization data is incorrect"
+    full_results["wug_adj"] = wug_results
 
-        with output_path.open("w") as fj:
-            json.dump(full_results, fj)
-    else:
-        full_results = {}
-        zero_main_path: pathlib.Path = args.results_dir / args.model_path_or_name.stem / args.revision_name / "zero_shot" / args.backend
-        devbench_path: pathlib.Path = args.results_dir / args.model_path_or_name.stem / args.revision_name / "zero_shot"
-        fine_main_path: pathlib.Path = args.results_dir / args.model_path_or_name.stem / args.revision_name / "finetune"
-        output_path: pathlib.Path = args.results_dir / args.model_path_or_name.stem / args.revision_name / f"all_full_preds_{args.backend}.json"
+    # WUG_PAST
+    wug_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(zero_main_path / "wug_past" / "wug_past_tense" / "predictions.json")
+    assert _check_size("wug_past", wug_results, fast=False), "The WUG Past Tense data is incorrect"
+    full_results["wug_past"] = wug_results
 
-        # BLiMP
-        blimp_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(zero_main_path / "blimp" / "blimp_filtered" / "predictions.json")
-        assert _check_size("blimp", blimp_results, args.fast), "The BLiMP data is incorrect"
-        full_results["blimp"] = blimp_results
+    # WUG_PAST
+    comps_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(zero_main_path / "comps" / "comps" / "predictions.json")
+    assert _check_size("comps", comps_results, fast=False), "The COMPS data is incorrect"
+    full_results["comps"] = comps_results
 
-        # BLiMP Supplement
-        bsupp_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(zero_main_path / "blimp" / "supplement_filtered" / "predictions.json")
-        assert _check_size("blimp_supplement", bsupp_results, args.fast), "The BLiMP Supplement data is incorrect"
-        full_results["blimp_supplement"] = bsupp_results
+    # Reading
+    read_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(zero_main_path / "reading" / "predictions.json")
+    assert _check_size("reading", read_results, fast=False), "The Reading data is incorrect"
+    full_results["reading"] = read_results
 
-        # EWoK
-        ewok_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(zero_main_path / "ewok" / "ewok_filtered" / "predictions.json")
-        assert _check_size("ewok", ewok_results, args.fast), "The EWoK data is incorrect"
-        full_results["ewok"] = ewok_results
+    # GLUE
+    full_results["glue"] = {}
 
-        # Entity Tracking
-        et_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(zero_main_path / "entity_tracking" / "entity_tracking" / "predictions.json")
-        assert _check_size("entity_tracking", et_results, args.fast), "The Entity Tracking data is incorrect"
-        full_results["entity_tracking"] = et_results
+    glue_tasks = ["boolq", "mnli", "mrpc", "multirc", "qqp", "rte", "wsc"]
 
-        # WUG_ADJ
-        wug_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(zero_main_path / "wug_adj" / "wug_adj_nominalization" / "predictions.json")
-        assert _check_size("wug_adj", wug_results, args.fast), "The WUG Adjective Nominalization data is incorrect"
-        full_results["wug_adj"] = wug_results
+    for gt in glue_tasks:
+        read_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(fine_main_path / gt / "predictions.json")
+        assert _check_size(gt, read_results, fast=False), f"The {gt} data is incorrect"
+        full_results["glue"] |= read_results
 
-        # WUG_PAST
-        wug_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(zero_main_path / "wug_past" / "wug_past_tense" / "predictions.json")
-        assert _check_size("wug_past", wug_results, args.fast), "The WUG Past Tense data is incorrect"
-        full_results["wug_past"] = wug_results
+    if args.multimodal:
+        # Multi-Modal
+        # VQA
+        read_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(zero_main_path / "vqa" / "vqa_filtered" / "predictions.json")
+        assert _check_size("vqa", read_results, fast=False), "The VQA data is incorrect"
+        full_results["vqa"] = read_results
 
-        # WUG_PAST
-        comps_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(zero_main_path / "comps" / "comps" / "predictions.json")
-        assert _check_size("comps", comps_results, args.fast), "The COMPS data is incorrect"
-        full_results["comps"] = comps_results
+        # Winoground
+        read_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(zero_main_path / "winoground" / "winoground_filtered" / "predictions.json")
+        assert _check_size("winoground", read_results, fast=False), "The Winoground data is incorrect"
+        full_results["winoground"] = read_results
 
-        # Reading
-        read_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(zero_main_path / "reading" / "predictions.json")
-        assert _check_size("reading", read_results, args.fast), "The Reading data is incorrect"
-        full_results["reading"] = read_results
+        # DevBench
+        # Visual vocabulary
+        full_results['devbench'] = {'lex-viz_visual' : {}, 'trog' : {}, 'things' : {}}
 
-        # GLUE
-        full_results["glue"] = {}
+        read_results: np.array[float] = _load_results_devbench(devbench_path / "devbench" / "lex-viz_vocab.npy")
+        assert _check_size_devbench("lex-viz_vocab", read_results), "The DevBench Visual vocabulary data is incorrect"
+        full_results["devbench"]["lex-viz_visual"]["predictions"] = read_results.tolist()
 
-        glue_tasks = ["boolq", "mnli", "mrpc", "multirc", "qqp", "rte", "wsc"]
+        # TROG
+        read_results: np.array[float] = _load_results_devbench(devbench_path / "devbench" / "gram-trog.npy")
+        assert _check_size_devbench("trog", read_results), "The DevBench TROG data is incorrect"
+        full_results["devbench"]["trog"]["predictions"] = read_results.tolist()
 
-        for gt in glue_tasks:
-            read_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(fine_main_path / gt / "predictions.json")
-            assert _check_size(gt, read_results, args.fast), f"The {gt} data is incorrect"
-            full_results["glue"] |= read_results
+        # Things
+        read_results: np.array[float] = _load_results_devbench(devbench_path / "devbench" / "sem-things_pairwise_sims.npy")
+        assert _check_size_devbench("things", read_results), "The DevBench things data is incorrect"
+        full_results["devbench"]["things"]["predictions"] = read_results.tolist()
 
-        if args.multimodal:
-            # Multi-Modal
-            # VQA
-            read_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(zero_main_path / "vqa" / "vqa_filtered" / "predictions.json")
-            assert _check_size("vqa", read_results, args.fast), "The VQA data is incorrect"
-            full_results["vqa"] = read_results
+    return full_results
+    
+def get_fast_eval_metrics(args):
+    fast_eval_results = {
+        "blimp" : [], "blimp_supplement" : [], "ewok" : [],
+        "entity_tracking" : [], "wug_adj" : [],
+        "wug_past" : [], "reading" : []
+    }
+    revision_list = STRICT_SMALL_FAST_REVISIONS if args.strict_small else OTHER_FAST_REVISIONS
+    for revision_name in revision_list:
+        revision_fast_results = get_revision_fast_eval_metrics(args, revision_name)
+        for key, value in revision_fast_results.items():
+            fast_eval_results[key].append(value)
+    return fast_eval_results
 
-            # Winoground
-            read_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(zero_main_path / "winoground" / "winoground_filtered" / "predictions.json")
-            assert _check_size("winoground", read_results, args.fast), "The Winoground data is incorrect"
-            full_results["winoground"] = read_results
+def get_revision_fast_eval_metrics(args, revision_name):
+    revision_results = {}
+    main_path: pathlib.Path = args.results_dir / args.model_path_or_name.stem / revision_name / "zero_shot" / args.backend
+    data_path: pathlib.Path = args.fast_eval_dir
 
-            # DevBench
-            # Visual vocabulary
-            full_results['devbench'] = {'lex-viz_visual' : {}, 'trog' : {}, 'things' : {}}
+    # BLiMP
+    blimp_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(main_path / "blimp" / "blimp_fast" / "predictions.json")
+    assert _check_size("blimp", blimp_results, True), "The BLiMP Fast data is incorrect"
+    revision_results["blimp"] = _calculate_target_results(blimp_results, "blimp", data_path / "blimp_fast") 
 
-            read_results: np.array[float] = _load_results_devbench(devbench_path / "devbench" / "lex-viz_vocab.npy")
-            assert _check_size_devbench("lex-viz_vocab", read_results), "The DevBench Visual vocabulary data is incorrect"
-            full_results["devbench"]["lex-viz_visual"]["predictions"] = read_results.tolist()
+    # BLiMP Supplement
+    bsupp_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(main_path / "blimp" / "supplement_fast" / "predictions.json")
+    assert _check_size("blimp_supplement", bsupp_results, True), "The BLiMP Supplement Fast data is incorrect"
+    revision_results["blimp_supplement"] = _calculate_target_results(bsupp_results, "blimp_supplement", data_path / "supplement_fast")
 
-            # TROG
-            read_results: np.array[float] = _load_results_devbench(devbench_path / "devbench" / "gram-trog.npy")
-            assert _check_size_devbench("trog", read_results), "The DevBench TROG data is incorrect"
-            full_results["devbench"]["trog"]["predictions"] = read_results.tolist()
+    # EWoK
+    ewok_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(main_path / "ewok" / "ewok_fast" / "predictions.json")
+    assert _check_size("ewok", ewok_results, True), "The EWoK Fast data is incorrect"
+    revision_results["ewok"] = _calculate_target_results(ewok_results, "ewok", data_path / "ewok_fast")
 
-            # Things
-            read_results: np.array[float] = _load_results_devbench(devbench_path / "devbench" / "sem-things_pairwise_sims.npy")
-            assert _check_size_devbench("things", read_results), "The DevBench things data is incorrect"
-            full_results["devbench"]["things"]["predictions"] = read_results.tolist()
+    # Entity Tracking
+    et_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(main_path / "entity_tracking" / "entity_tracking_fast" / "predictions.json")
+    assert _check_size("entity_tracking", et_results, True), "The Entity Tracking Fast data is incorrect"
+    revision_results["entity_tracking"] = _calculate_target_et_results(et_results, data_path / "entity_tracking_fast")
 
-        with output_path.open("w") as fj:
-            json.dump(full_results, fj)
+    # WUG_ADJ
+    wug_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(main_path / "wug_adj" / "wug_adj_nominalization" / "predictions.json")
+    assert _check_size("wug_adj", wug_results, True), "The WUG Adjective Nominalization data is incorrect"
+    revision_results["wug_adj"] = _calculate_wugs_results(wug_results, "wug_adj_nominalization", data_path / "wug_adj_nominalization") 
 
+    # WUG_PAST
+    wug_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(main_path / "wug_past" / "wug_past_tense" / "predictions.json")
+    assert _check_size("wug_past", wug_results, True), "The WUG_PAST data is incorrect"
+    revision_results["wug_past"] = _calculate_wugs_results(wug_results, "wug_past_tense", data_path / "wug_past_tense")
+
+    # Reading
+    read_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(main_path / "reading" / "predictions.json")
+    assert _check_size("reading", read_results, True), "The Reading data is incorrect"
+    revision_results["reading"] = _calculate_reading_results(read_results, data_path / "reading" / "reading_data.csv") 
+
+    return revision_results
+    
+def _calculate_target_results(results_dict: dict[str, dict[str, list[dict[str, str]]]], task: str, path_to_data: Path) -> dict[str, float]:
+    processed_results = {}
+    data_key = "Target1" if task == "ewok" else "sentence_good"
+    for subtask in results_dict.keys():
+        correct = 0
+        total = 0
+        with (path_to_data / subtask).with_suffix(".jsonl").open("r") as data_file:
+            subtask_results = results_dict[subtask]["predictions"]
+            for result, data in zip(subtask_results, data_file.readlines()):
+                data = json.loads(data)
+                total += 1
+                res = result["pred"].strip() if isinstance(result["pred"], str) else result["pred"]
+                target = data[data_key].strip() if isinstance(data[data_key], str) else data[data_key]
+                if res == target:
+                    correct += 1
+            processed_results[subtask] = correct / total
+    return processed_results
+
+def _calculate_target_et_results(results_dict: dict[str, dict[str, list[dict[str, str]]]], path_to_data: Path) -> dict[str, float]:
+    processed_results = {}
+    subtask_to_targets = defaultdict(list)
+    with (path_to_data / "regular").with_suffix(".jsonl").open("r") as data_file:
+        for data in data_file.readlines():
+            data = json.loads(data)
+            subtask_to_targets[f'regular_{data["numops"]}_ops'].append(data)
+
+    for subtask in results_dict.keys():
+        correct = 0
+        total = 0
+        subtask_results = results_dict[subtask]["predictions"]
+        subtask_targets = subtask_to_targets[subtask]
+        for result, data in zip(subtask_results, subtask_targets):
+            total += 1
+            res = result["pred"].strip() if isinstance(result["pred"], str) else result["pred"]
+            target = data["options"][0].strip() if isinstance(data["options"][0], str) else data["options"][0]
+            if res == target:
+                correct += 1
+        processed_results[subtask] = correct / total
+    return processed_results
+
+def _calculate_wugs_results(results_dict: dict[str, dict[str, list[dict[str, str]]]], task: str, path_to_data: Path) -> dict[str, float]:
+    processed_results = {}
+
+    for subtask in results_dict.keys():
+        model_ratios = []
+        human_ratios = []
+
+
+        preds = []
+        with (path_to_data / task).with_suffix(".jsonl").open("r") as data_file:
+            subtask_results = results_dict[subtask]["predictions"]
+            for result, data in zip(subtask_results, data_file.readlines()):
+                data = json.loads(data)
+                human_ratios.append(data["ratio"])
+                model_ratios.append(result["prob"])
+                preds.append(result["pred"] in data["sentences"])
+            processed_results[subtask] = spearmanr(model_ratios, human_ratios)[0]
+
+    return processed_results
+
+
+def _calculate_reading_results(results_dict: dict[str, dict[str, list[dict[str, int | float]]]], path_to_data: Path) -> dict[str, float]:
+    data = pd.read_csv(path_to_data, dtype={'item': str})
+    preds = [item["pred"] for item in results_dict["reading"]["predictions"]]
+    prev_preds = [item["prev_pred"] for item in results_dict["reading"]["predictions"]]
+    data["pred"] = preds
+    data["prev_pred"] = prev_preds
+    eye_tracking_vars = ['RTfirstfix', 'RTfirstpass', 'RTgopast', 'RTrightbound']
+    eye_tracking_result = []
+    for dv in eye_tracking_vars:
+        # Baseline model
+        temp = data[[dv, "Subtlex_log10", "length", "context_length"]].dropna()
+        OLS_baseline = smf.ols(formula=dv+' ~ Subtlex_log10 + length + context_length + Subtlex_log10:length + Subtlex_log10:context_length + length:context_length', data=temp).fit()
+        R2_baseline = float(OLS_baseline.rsquared)
+        # Predictive model
+        temp = data[[dv, "Subtlex_log10", "length", "context_length", "pred"]].dropna()
+        OLS_model = smf.ols(formula=dv+' ~ Subtlex_log10 + length + context_length + Subtlex_log10:length + Subtlex_log10:context_length + length:context_length + pred', data=temp).fit()
+        R2_model = float(OLS_model.rsquared)
+        eye_tracking_result.append(((R2_model-R2_baseline)/(1-R2_baseline)))
+    eye_tracking_result = sum(eye_tracking_result) / len(eye_tracking_result)
+
+    # Baseline model
+    temp = data[["self_paced_reading_time", "Subtlex_log10", "length", "context_length", "prev_length", "prev_pred"]].dropna()
+    OLS_baseline = smf.ols(formula='self_paced_reading_time ~ Subtlex_log10 + length + context_length + prev_length + prev_pred + Subtlex_log10:length + Subtlex_log10:context_length + Subtlex_log10:prev_length + Subtlex_log10:prev_pred + length:context_length + length:prev_length + length:prev_pred + context_length:prev_length + context_length:prev_pred + prev_length:prev_pred', data=temp).fit()
+    R2_baseline = float(OLS_baseline.rsquared)
+    # Predictive model
+    temp = data[["self_paced_reading_time", "Subtlex_log10", "length", "context_length", "prev_length", "prev_pred", "pred"]].dropna()
+    OLS_model = smf.ols(formula='self_paced_reading_time ~ Subtlex_log10 + length + context_length + prev_length + prev_pred + Subtlex_log10:length + Subtlex_log10:context_length + Subtlex_log10:prev_length + Subtlex_log10:prev_pred + length:context_length + length:prev_length + length:prev_pred + context_length:prev_length + context_length:prev_pred + prev_length:prev_pred + pred', data=temp).fit()
+    R2_model = float(OLS_model.rsquared)
+    self_paced_reading_result = ((R2_model-R2_baseline)/(1-R2_baseline))
+
+    processed_results = {"spr": self_paced_reading_result, "rt": eye_tracking_result}
+
+    return processed_results
 
 if __name__ == "__main__":
     args = _parse_arguments()
