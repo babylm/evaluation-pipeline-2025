@@ -4,10 +4,14 @@ import json
 import pathlib
 import argparse
 import numpy as np
-from scipy.stats import spearmanr, pearsonr
+from scipy.stats import spearmanr
 from collections import defaultdict
 import pandas as pd
 import statsmodels.formula.api as smf
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 STRICT_SMALL_FAST_REVISIONS = [f"chck_{i}M" for i in range(1, 10)] + [f"chck_{i*10}M" for i in range(1, 11)]
 OTHER_FAST_REVISIONS = [f"chck_{i}M" for i in range(1, 10)] + [f"chck_{i*10}M" for i in range(1, 10)] + [f"chck_{i*100}M" for i in range(1, 11)]
@@ -205,6 +209,7 @@ def _check_validity_of_dirs(args):
         for revision_name in revision_list:
             assert _check_validity_of_dir(args, revision_name, fast=True), f"The directory for revision {revision_name} is incorrect for fast evals, please fix the errors!"
 
+
 def _check_validity_of_dir(args: argparse.Namespace, revision_name: str, fast: bool) -> bool:
     finetune_path = args.results_dir / args.model_path_or_name.stem / revision_name / "finetune"
     zero_shot_path = args.results_dir / args.model_path_or_name.stem / revision_name / "zero_shot" / args.backend
@@ -352,6 +357,7 @@ def _check_size_aoa(args, results):
 
     return True
 
+
 def _check_size_devbench(subtask: str, results: np.array[float]) -> bool:
     valid = True
     required_shape = DEVBENCH[subtask]
@@ -377,7 +383,8 @@ def _load_results_devbench(path: pathlib.Path) -> np.array[float]:
     results = np.load(path)
     return results
 
-def collate_preds(args: argparse.Namespace) -> None: 
+
+def collate_preds(args: argparse.Namespace) -> None:
     _check_validity_of_dirs(args)
 
     # Collate main evaluation preds
@@ -389,9 +396,9 @@ def collate_preds(args: argparse.Namespace) -> None:
         full_results["fast_eval_results"] = fast_eval_results
 
     output_path: pathlib.Path = args.results_dir / args.model_path_or_name.stem / f"all_full_preds_and_fast_scores_{args.backend}.json"
-    result_dicts = [full_results, fast_eval_results]
     with output_path.open("w") as f:
         json.dump(full_results, f)
+
 
 def collate_full_eval_preds(args):
     full_results = {}
@@ -485,7 +492,8 @@ def collate_full_eval_preds(args):
         full_results["devbench"]["things"]["predictions"] = read_results.tolist()
 
     return full_results
-    
+
+
 def get_fast_eval_metrics(args):
     fast_eval_results = {
         "blimp" : [], "blimp_supplement" : [], "ewok" : [],
@@ -499,6 +507,7 @@ def get_fast_eval_metrics(args):
             fast_eval_results[key].append(value)
     return fast_eval_results
 
+
 def get_revision_fast_eval_metrics(args, revision_name):
     revision_results = {}
     main_path: pathlib.Path = args.results_dir / args.model_path_or_name.stem / revision_name / "zero_shot" / args.backend
@@ -507,7 +516,7 @@ def get_revision_fast_eval_metrics(args, revision_name):
     # BLiMP
     blimp_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(main_path / "blimp" / "blimp_fast" / "predictions.json")
     assert _check_size("blimp", blimp_results, True), "The BLiMP Fast data is incorrect"
-    revision_results["blimp"] = _calculate_target_results(blimp_results, "blimp", data_path / "blimp_fast") 
+    revision_results["blimp"] = _calculate_target_results(blimp_results, "blimp", data_path / "blimp_fast")
 
     # BLiMP Supplement
     bsupp_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(main_path / "blimp" / "supplement_fast" / "predictions.json")
@@ -527,7 +536,7 @@ def get_revision_fast_eval_metrics(args, revision_name):
     # WUG_ADJ
     wug_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(main_path / "wug_adj" / "wug_adj_nominalization" / "predictions.json")
     assert _check_size("wug_adj", wug_results, True), "The WUG Adjective Nominalization data is incorrect"
-    revision_results["wug_adj"] = _calculate_wugs_results(wug_results, "wug_adj_nominalization", data_path / "wug_adj_nominalization") 
+    revision_results["wug_adj"] = _calculate_wugs_results(wug_results, "wug_adj_nominalization", data_path / "wug_adj_nominalization")
 
     # WUG_PAST
     wug_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(main_path / "wug_past" / "wug_past_tense" / "predictions.json")
@@ -537,10 +546,11 @@ def get_revision_fast_eval_metrics(args, revision_name):
     # Reading
     read_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(main_path / "reading" / "predictions.json")
     assert _check_size("reading", read_results, True), "The Reading data is incorrect"
-    revision_results["reading"] = _calculate_reading_results(read_results, data_path / "reading" / "reading_data.csv") 
+    revision_results["reading"] = _calculate_reading_results(read_results, data_path / "reading" / "reading_data.csv")
 
     return revision_results
-    
+
+
 def _calculate_target_results(results_dict: dict[str, dict[str, list[dict[str, str]]]], task: str, path_to_data: Path) -> dict[str, float]:
     processed_results = {}
     data_key = "Target1" if task == "ewok" else "sentence_good"
@@ -558,6 +568,7 @@ def _calculate_target_results(results_dict: dict[str, dict[str, list[dict[str, s
                     correct += 1
             processed_results[subtask] = correct / total
     return processed_results
+
 
 def _calculate_target_et_results(results_dict: dict[str, dict[str, list[dict[str, str]]]], path_to_data: Path) -> dict[str, float]:
     processed_results = {}
@@ -581,13 +592,13 @@ def _calculate_target_et_results(results_dict: dict[str, dict[str, list[dict[str
         processed_results[subtask] = correct / total
     return processed_results
 
+
 def _calculate_wugs_results(results_dict: dict[str, dict[str, list[dict[str, str]]]], task: str, path_to_data: Path) -> dict[str, float]:
     processed_results = {}
 
     for subtask in results_dict.keys():
         model_ratios = []
         human_ratios = []
-
 
         preds = []
         with (path_to_data / task).with_suffix(".jsonl").open("r") as data_file:
@@ -636,9 +647,11 @@ def _calculate_reading_results(results_dict: dict[str, dict[str, list[dict[str, 
 
     return processed_results
 
+
 def main():
     args = _parse_arguments()
     collate_preds(args)
+
 
 if __name__ == "__main__":
     main()
