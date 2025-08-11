@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-import gc
 import json
 import logging
 import random
@@ -8,7 +7,6 @@ import typing as t
 from pathlib import Path
 
 import numpy as np
-import torch
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -33,22 +31,25 @@ class StepConfig:
         if debug:
             self.steps = self.steps[:5]
             self.word_counts = self.word_counts[:5]
-            logger.info("Entering debugging mode, select first 5 steps.")
+            logger.info("Entering debugging mode, select first 5 exisitng checkpoints.")
 
         if resume and file_path is not None:
-           self.steps, self.word_counts = self.recover_steps(file_path)
+            self.steps, self.word_counts = self.recover_steps(file_path)
 
         logger.info(f"Generated {len(self.steps)} checkpoint steps")
-
 
     def generate_checkpoint_steps(self, track) -> list[int]:
         """Generate complete list of checkpoint steps."""
         M = 10**6
-        checkpoint_names = [f'chck_{i}M' for i in range(1, 10)] + [f'chck_{i*10}M' for i in range(1, 11)]
-        word_counts = [i*M for i in range(1, 10)] + [10*i*M for i in range(1, 11)]
+        checkpoint_names = [f"chck_{i}M" for i in range(1, 10)] + [
+            f"chck_{i * 10}M" for i in range(1, 11)
+        ]
+        word_counts = [i * M for i in range(1, 10)] + [10 * i * M for i in range(1, 11)]
         if track != "strict-small":
-            checkpoint_names = checkpoint_names + [f'chck_{i*100}M' for i in range(2, 11)]
-            word_counts = word_counts + [100*i*M for i in range(2, 11)]
+            checkpoint_names = checkpoint_names + [
+                f"chck_{i * 100}M" for i in range(2, 11)
+            ]
+            word_counts = word_counts + [100 * i * M for i in range(2, 11)]
         return checkpoint_names, word_counts
 
     def recover_steps(self, file_path: Path) -> list[int]:
@@ -70,7 +71,7 @@ class StepConfig:
                         completed_steps.add(result["step"])
 
             new_steps = [step for step in self.steps if step not in completed_steps]
-            new_word_counts = self.word_counts[-len(new_steps):]
+            new_word_counts = self.word_counts[-len(new_steps) :]
             return new_steps, new_word_counts
         except Exception as e:
             logger.warning(f"Error reading resume file: {e}")
@@ -339,7 +340,7 @@ class StepPathProcessor:
 
 
 def load_eval(
-    word_path: Path, min_context: int = 2, debug: bool = False
+    word_path: Path, min_context: int = 20, debug: bool = False
 ) -> tuple[list[str], list[list[str]]]:
     """Load word and context lists from a JSON file."""
     data = JsonProcessor.load_json(word_path)
@@ -366,16 +367,3 @@ def load_eval(
         logger.info(f"Loading {len(words)} words.")
 
     return words, contexts
-
-
-def load_tail_threshold_stat(longtail_path: Path) -> float | None:
-    """Load longtail threshold from the JSON file."""
-    data = JsonProcessor.load_json(longtail_path)
-    return data["threshold_info"]["probability"]
-
-
-def cleanup() -> None:
-    """Release memory after results are no longer needed."""
-    gc.collect()
-    if torch.cuda.is_available():
-        torch.cuda.empty_cache()
