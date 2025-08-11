@@ -308,14 +308,12 @@ This year we require both the evaluation of the final model, on a set of full ev
 ### Submission Format
 To create a submission file to the leaderboard or challenge use the following command:
 ```bash
-python -m evaluation_pipeline.collate_preds --model_path_or_name=NAME_OF_YOUR_MODEL --backend=BACKEND
+bash collate_preds.sh NAME_OF_YOUR_MODEL BACKEND SUBMISSION_TRACK
 ```
-you can use the flag `--fast` to add the fast results of each checkpoint to the collation and make the submission valid for the BabyLM challenge.
+The `--fast` flag in the script is to add the fast evaluation results of each checkpoint to the collation and make the submission valid for the BabyLM challenge.
 > [!NOTE]
 > Currently the code assumes that the checkpoint naming scheme is `chck_*M`. If you use a different naming scheme make sure to edit lines 16 and 17 of the `collate_preds.py` file. In addition the code assumes that the training is done on the maximum number of words possible, please edit this if it is not the case for you.
 
-If you are submitting to the `strict-small` track, make sure to add the flag `--strict_small`.
-If you are submitting to the `multimodal` track, make sure to add the flag `--multimodal`.
 Make sure that all the evaluations have been run before collating them.
 
 
