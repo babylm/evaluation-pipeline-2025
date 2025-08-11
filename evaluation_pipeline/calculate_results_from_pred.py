@@ -374,5 +374,7 @@ if __name__ == "__main__":
         )
         print(f"GLUE\t\t{score:.2f}")
         # AoA
-        score = _calculate_aoa_results(all_results["aoa"], evaluation_path / "aoa")
+        score = _calculate_aoa_results(
+            all_results["aoa"], evaluation_path / "aoa" / "cdi_human.csv"
+        )
         print(f"AoA\t\t{score:.2f}")
