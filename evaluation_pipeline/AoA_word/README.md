@@ -6,7 +6,7 @@ This repository provides a comprehensive benchmark for evaluating Age of Acquisi
 
 ## Quick Start
 
-Please download the `cdi_childes.json` from https://osf.io/ryjfm/, the target file is in `evaluation_data/full_eval/cdi_childes/cdi_childes.json `
+Please download the `cdi_childes.json` from https://osf.io/ryjfm/, the target file is in `evaluation_data/full_eval/aoa/cdi_childes.json `
 
 Run the evaluation pipeline using `run.py`:
 ```bash
@@ -26,7 +26,7 @@ Available arguments:
 - `--output_dir`: the output directory to save the results; final results are stores in output_dir/surprisal.json
 
 
-The current scripts use the util functions in the follwoing scripts: 
+The current scripts use the util functions in the following scripts: 
 
 The `eval_util.py` file contains core utilities for model evaluation:
 
@@ -69,17 +69,10 @@ The pipeline generates structured JSON outputs:
 
 ## Dataset 
 
-We provide the extracted eval dataset, so you do NOT need to re-run the script and extract the dataset from C4-EN. The script is provided here for your reference.  
-
-The `dataset_util.py` file handles n-gram context collection and preprocessing for your reference; we provide the extracted eval dataset, so you do not need to re-run the script and extract the dataset:
-
-- **NGramContextCollector**: Collects and processes n-gram statistics from datasets
-- **TextPreprocessor**: Handles sentence segmentation and tokenization using spaCy
-- **Context Filtering**: Selects contexts based on frequency or random sampling
-- **Word Validation**: Filters correctly spelled words using spell checking
+We provide the eval dataset in  https://osf.io/ryjfm/, so you do NOT need to re-run the script and extract the dataset from C4-EN. The script is provided here for your reference.  
 
 
-The `prepare_dataset.py` script handles dataset preparation and context extraction.:
+The `prepare_dataset.py` script handles dataset preparation and context extraction
 
 ```bash
 python prepare_dataset.py \
@@ -99,14 +92,13 @@ Available arguments:
 - `--n_contexts`: Number of contexts per word
 - `--mode`: Selection mode ("frequent" or "random")
 
+The `dataset_util.py` provides n-gram context class and preprocessing in `prepare_dataset.py`.
 
 
 
 ## Metric computation
 
-The evaluation computes the cruve fitness between model and child "age-of-acquisition" for a certain 
-
-compared with child  CDI (MacArthur-Bates Communicative Development Inventory) reference data (link:https://wordbank.stanford.edu)
+Following [(Chang & Bergen, 2022)](https://doi.org/10.1162/tacl_a_00444), this benchmark tracks word surprisal across training checkpoints to extract learning curves and compute ages of acquisition for vocabulary items. We compute surprisal scores as the negative log probability of target words given their contexts in a test set across training steps [c4-en-10k](https://huggingface.co/datasets/stas/c4-en-10k), and then fit sigmoid functions to the learning trajectory of each word. In the end, the benchmark enables direct comparison between language model and child language development by computing correlation scores between model-derived AoA and human AoA data from the MacArthur-Bates Communicative Development Inventory (CDI) [(Frank et al., 2017)](https://wordbank.stanford.edu).
 
 
 ## Citation
