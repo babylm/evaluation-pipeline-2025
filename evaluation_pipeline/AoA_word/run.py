@@ -78,6 +78,7 @@ def config_paths(args) -> tuple[Path, Path | None]:
     model_name = pathlib.Path(args.model_name).stem
     full_output_dir = args.output_dir / model_name / "main" / "zero_shot" / args.backend / "AoA_word"
     full_output_dir.mkdir(parents=True, exist_ok=True)
+    print("Saving AoA results to: ", full_output_dir)
 
     result_file = full_output_dir / "surprisal.json"
     if args.resume:

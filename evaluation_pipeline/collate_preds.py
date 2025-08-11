@@ -193,8 +193,11 @@ def _parse_arguments() -> argparse.Namespace:
     parser.add_argument("--fast", action="store_true", help="Whether to get the include fast evaluation results in the collated output.")
     parser.add_argument('--fast_eval_dir', type=pathlib.Path, default=pathlib.Path("evaluation_data/fast_eval"),
                         help="Path to the evaluation data")
-    parser.add_argument("--strict_small", action="store_true", help="Whether we are collating fast evaluation results for a strict-small submission.")
-    parser.add_argument("--multimodal", action="store_true", help="Whether mutlimodal evaluation was done.")
+    parser.add_argument("--track", type=str, choices=["strict-small", "multimodal", "strict", "interaction"], default="strict",
+                        help="What track the collation is for.")
+
+    args = parser.parse_args()
+    args.multimodal = args.track == "multimodal"
 
     return parser.parse_args()
 
@@ -205,7 +208,7 @@ def _check_validity_of_dirs(args):
 
     # Next check the validity of the fast evaluation directories
     if args.fast:
-        revision_list = STRICT_SMALL_FAST_REVISIONS if args.strict_small else OTHER_FAST_REVISIONS
+        revision_list = STRICT_SMALL_FAST_REVISIONS if args.track == "strict-small" else OTHER_FAST_REVISIONS
         for revision_name in revision_list:
             assert _check_validity_of_dir(args, revision_name, fast=True), f"The directory for revision {revision_name} is incorrect for fast evals, please fix the errors!"
 
@@ -335,7 +338,7 @@ def _check_size(task: str, results: dict[str, dict[str, list[dict[str, str | int
 
 def _check_size_aoa(args, results):
     # First check if we have predictions for each checkpoint
-    revision_list = STRICT_SMALL_FAST_REVISIONS if args.strict_small else OTHER_FAST_REVISIONS
+    revision_list = STRICT_SMALL_FAST_REVISIONS if args.track == "strict-small" else OTHER_FAST_REVISIONS
     revisions_in_results = {r['step'] for r in results["results"]}
     if len(revision_list) != len(revisions_in_results):
         valid = False
@@ -500,7 +503,7 @@ def get_fast_eval_metrics(args):
         "entity_tracking" : [], "wug_adj" : [],
         "wug_past" : [], "reading" : []
     }
-    revision_list = STRICT_SMALL_FAST_REVISIONS if args.strict_small else OTHER_FAST_REVISIONS
+    revision_list = STRICT_SMALL_FAST_REVISIONS if args.track == "strict-small" else OTHER_FAST_REVISIONS
     for revision_name in revision_list:
         revision_fast_results = get_revision_fast_eval_metrics(args, revision_name)
         for key, value in revision_fast_results.items():
