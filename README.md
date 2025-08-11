@@ -311,6 +311,7 @@ python -m evaluation_pipeline.collate_preds --model_path_or_name=NAME_OF_YOUR_MO
 you can use the flag `--fast` to add the fast results of each checkpoint to the collation and make the submission valid for the BabyLM challenge.
 > [!NOTE]
 > Currently the code assumes that the checkpoint naming scheme is `chck_*M`. If you use a different naming scheme make sure to edit lines 16 and 17 of the `collate_preds.py` file.
+
 If you are submitting to the `strict-small` track, make sure to add the flag `--strict_small`.
 If you are submitting to the `multimodal` track, make sure to add the flag `--multimodal`.
 Make sure that all the evaluations have been run before collating them.
