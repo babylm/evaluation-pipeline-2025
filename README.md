@@ -158,7 +158,13 @@ To make sure they fit your checkpoint naming scheme. To run the script type the 
 > [!Important]
 > For the Encoder-Decoder backend, there exists two different evaluation styles for the sentence zero_shot evaluations. Those are either prefix `enc_dec_prefix` or bi-direction/fill-in-the-gap `enc_dec_mask`. The style of input to the encoder and decoder are the following:
 > - **Encoder**: `CLS` text with a mask / prefix ending with a mask `EOS` (the code checks whether a `CLS` and `EOS` are defined, if not, they are not added).
-> - **Decoder**: `BOS` / `MASK` text to predict in case of prefix (The choice of `BOS` or `MASK` depends on the architecture). 
+> - **Decoder**: `BOS` / `MASK` text to predict in case of prefix (The choice of `BOS` or `MASK` depends on the architecture).
+
+#### AoA evaluation
+Use the following shell script to evaluate on the fast zero-shot evaluations:
+```bash
+./eval_aoa.sh <path_to_model> <architecture (causal/mntp/mlm/enc_dec_mask/enc_dec_prefix)> <track> <eval_dir (optional, default:evaluation_data/full_eval/cdi_childes/cdi_childes.json)> <output_dir (optional, default:results)>
+```
 
 #### Fine-tuning or low-rank adapter training
 
@@ -325,6 +331,11 @@ The submission is a JSON file where the first key represents the benchmark, the 
 
 ### Leaderboard
 You can find the leaderboard for the non-hidden tasks [here](https://huggingface.co/spaces/BabyLM-community/babylm-leaderboard-2025-no-hidden-tasks).
+
+
+### Steps to submission
+
+First train a model, then run `eval_zero_shot.sh` on the final checkpoint, then `eval_finetuning.sh` on the final checkpoint, if you are in the multimodal track, run `eval_multimodal.sh` on the final checkpoint. Then run `eval_aoa.sh` and `eval_zero_shot_fast_all_revisions.sh`. Finally run `collate_preds.sh` and submit to the leaderboard. 
 
 
 ----
