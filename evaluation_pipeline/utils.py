@@ -143,6 +143,7 @@ class AoAEvaluator:
         surprisal_data: list[float],
         training_steps: list[int],
         threshold_percentile: float = 0.5,
+        approximate_vocab: float = 300_000,
     ) -> float | None:
         """
         Compute Age of Acquisition for a word in the model.
@@ -168,7 +169,7 @@ class AoAEvaluator:
 
         # Calculate random chance baseline (vocabulary size dependent)
         # Using log2 for consistency with surprisal calculation
-        random_chance_surprisal = np.log2(30000)  # Approximate vocab size
+        random_chance_surprisal = np.log2(approximate_vocab)
         min_surprisal = np.min(valid_surprisals)
 
         # Calculate threshold surprisal (50% between random chance and minimum)
@@ -217,11 +218,33 @@ class AoAEvaluator:
             if aoa_step < valid_steps[0] or aoa_step > valid_steps[-1]:
                 return None
 
-            return log_aoa_step  # Return log10 scale as in the paper
+            return log_aoa_step
 
         except Exception as e:
             logger.debug(f"Failed to fit sigmoid for model surprisal: {e}")
             return None
+
+    def extract_step_number(self, step_name: str) -> float | None:
+        """Extract numeric step value from step name (e.g., 'chck_10M' -> 10000000)."""
+        import re
+
+        # Handle different step name formats
+        if isinstance(step_name, (int, float)):
+            return float(step_name)
+
+        # Extract number and unit from step name
+        match = re.search(r"(\d+(?:\.\d+)?)\s*([KMB]?)", str(step_name), re.IGNORECASE)
+        if not match:
+            return None
+
+        number = float(match.group(1))
+        unit = match.group(2).upper() if match.group(2) else ""
+
+        # Convert to actual step count
+        multipliers = {"K": 1000, "M": 1000000, "B": 1000000000}
+        multiplier = multipliers.get(unit, 1)
+
+        return number * multiplier
 
     def compute_curve_fitness(
         self, model_results: dict[str, t.Any], target_words: list[str] | None = None
@@ -244,8 +267,21 @@ class AoAEvaluator:
             if word not in word_data:
                 word_data[word] = {"steps": [], "surprisals": []}
 
-            word_data[word]["steps"].append(result["step"])
-            word_data[word]["surprisals"].append(result["surprisal"])
+            # Extract numeric step value from step name
+            try:
+                step_val = self.extract_step_number(result["step"])
+                surprisal_val = float(result["surprisal"])
+
+                if step_val is not None:
+                    word_data[word]["steps"].append(step_val)
+                    word_data[word]["surprisals"].append(surprisal_val)
+                else:
+                    logger.warning(
+                        f"Could not extract step number from: {result['step']}"
+                    )
+            except (ValueError, TypeError) as e:
+                logger.warning(f"Skipping invalid data for word {word}: {e}")
+                continue
 
         # Compute AoAs for both model and children
         model_aoas = []
@@ -292,7 +328,6 @@ class AoAEvaluator:
 
         overall_mean_score = np.mean(list(mean_monthly_scores.values()))
 
-        logger.info(f"Curve fitness computed for {len(valid_words)} words")
         logger.info(f"Model-Child AoA correlation: {correlation:.3f} (p={p_value:.3f})")
         logger.info(f"Overall mean monthly score: {overall_mean_score:.3f}")
 
