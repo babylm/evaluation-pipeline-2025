@@ -116,6 +116,11 @@ For EWoK data, run `python -m evaluation_pipeline.ewok.dl_and_filter` from the r
 
 For the fast EWoK data, we provide a password-protected ZIP file called `ewok_fast.zip`.
 
+For the DevBench data make sure to run:
+```bash
+./evaluation_pipeline/devbench/download_data.sh
+```
+
 ## Evaluation 
 This year, we provide different sets of evaluation tasks for different tracks.
 
@@ -125,18 +130,28 @@ If you are participating in one of the text-only tracks (Strict or Strict-small)
 
 Use the following shell script to evaluate on the full zero-shot evaluations:
 ```bash
-./eval_zero_shot.sh <path_to_model> <architecture (causal/mntp/mlm)> <eval_dir (optional, default:evaluation_data/full_eval)>
+./eval_zero_shot.sh <path_to_model> <architecture (causal/mntp/mlm/enc_dec_mask/enc_dec_prefix)> <eval_dir (optional, default:evaluation_data/full_eval)>
 ```
 
 Use the following shell script to evaluate on the fast zero-shot evaluations:
 ```bash
-./eval_zero_shot_fast.sh <path_to_model> <revision_name> <architecture (causal/mntp/mlm)> <eval_dir (optional, default:evaluation_data/fast_eval)>
+./eval_zero_shot_fast.sh <path_to_model> <revision_name> <architecture (causal/mntp/mlm/enc_dec_mask/enc_dec_prefix)> <eval_dir (optional, default:evaluation_data/fast_eval)>
 ```
 
 > [!Note]
 > The revision name indicates the checkpoint to use (for example in the gpt-bert baselines `chck_1M` is the model trained for about 1M words).
 
 These will work out of the box if you use a HuggingFace-based model. In the case you are not, you can either go to the `hf_conversion_tutorial` folder to create a HF repository or adapt the code to work with a pure PyTorch implementation (it should not be too complicated). The implementation currently only supports three types of trained langauge modeling tasks: causal, mlm, and mntp (mlm shifted similarly to causal). If another objective (like diffusion for example) was used to train the models, you will need to edit the files.
+
+In addition we have added a script called `eval_zero_shot_fast_all_revisions.sh` to evaluate all the checkpoints in a single call. To make sure this work with your naming scheme, make sure to edit the for-loops:
+```bash
+for i in {1..9}; do
+    checkpoint="chck_${i}M"
+```
+To make sure they fit your checkpoint naming scheme. To run the script type the following:
+```bash
+./eval_zero_shot_fast_all_revisions.sh <path_to_model> <architecture (causal/mntp/mlm/enc_dec_mask/enc_dec_prefix)> <track> <eval_dir (optional, default:evaluation_data/fast_eval)>
+```
 
 > [!Important]
 > For the Encoder-Decoder backend, there exists two different evaluation styles for the sentence zero_shot evaluations. Those are either prefix `enc_dec_prefix` or bi-direction/fill-in-the-gap `enc_dec_mask`. The style of input to the encoder and decoder are the following:
@@ -187,9 +202,11 @@ If you are participating in the multimodal track, use these instructions.
 
 First, run your models on the text-only evaluations, including BLiMP, the BLiMP supplement, EWoK, and (Super)GLUE. As long as your model is compatible with the AutoModelForCausalLM and AutoModelForSequenceClassification classes, you can use the same instructions as above to evaluate on the text-only tasks.
 
-In addition, use the following command to evaluate on Winoground (where we use an unpaired text score) and VQA (accuracy with 7 distractors).
-> [!Note]
-> Currently under construction.
+In addition, use the following command to evaluate on Winoground (where we use an unpaired text score), VQA (accuracy with 7 distractors) and DevBench:
+```bash
+./eval_multimodal.sh <path_to_model> <architecture (causal/mntp/mlm/enc_dec_mask/enc_dec_prefix)> <model_type (git/flamingo/llava/flava/clip/blip/siglip/bridgetower/vilt/cvcl)> <image_model>
+```
+The model types are used for DevBench, if you need a different model_type, implement it in the `evaluation_pipeline/devbench/model_classes` folder. (See other files in that folder for examples.) Then add a wrapper to `evaluation_pipeline/devbench/eval.py`. Be sure to submit a pull request so others can benefit from your implementation!
 
 ## Baselines
 The baseline models are available from the BabyLM Community huggingface page here: https://huggingface.co/BabyLM-community .
@@ -291,7 +308,11 @@ To create a submission file to the leaderboard or challenge use the following co
 ```bash
 python -m evaluation_pipeline.collate_preds --model_path_or_name=NAME_OF_YOUR_MODEL --backend=BACKEND
 ```
-you can use the flag `--fast` to collate the results for the fast evaluations.
+you can use the flag `--fast` to add the fast results of each checkpoint to the collation and make the submission valid for the BabyLM challenge.
+> [!NOTE]
+> Currently the code assumes that the checkpoint naming scheme is `chck_*M`. If you use a different naming scheme make sure to edit lines 16 and 17 of the `collate_preds.py` file.
+If you are submitting to the `strict-small` track, make sure to add the flag `--strict_small`.
+If you are submitting to the `multimodal` track, make sure to add the flag `--multimodal`.
 Make sure that all the evaluations have been run before collating them.
 
 
