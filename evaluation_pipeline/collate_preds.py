@@ -199,7 +199,7 @@ def _parse_arguments() -> argparse.Namespace:
     args = parser.parse_args()
     args.multimodal = args.track == "multimodal"
 
-    return parser.parse_args()
+    return args
 
 
 def _check_validity_of_dirs(args):
