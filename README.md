@@ -152,6 +152,8 @@ To make sure they fit your checkpoint naming scheme. To run the script type the 
 ```bash
 ./eval_zero_shot_fast_all_revisions.sh <path_to_model> <architecture (causal/mntp/mlm/enc_dec_mask/enc_dec_prefix)> <track> <eval_dir (optional, default:evaluation_data/fast_eval)>
 ```
+> [!NOTE]
+> The code assumes that you trained on the entire budget (100M words for strict-small and 1B words for strict). Please change this if this is not the case.
 
 > [!Important]
 > For the Encoder-Decoder backend, there exists two different evaluation styles for the sentence zero_shot evaluations. Those are either prefix `enc_dec_prefix` or bi-direction/fill-in-the-gap `enc_dec_mask`. The style of input to the encoder and decoder are the following:
@@ -310,7 +312,7 @@ python -m evaluation_pipeline.collate_preds --model_path_or_name=NAME_OF_YOUR_MO
 ```
 you can use the flag `--fast` to add the fast results of each checkpoint to the collation and make the submission valid for the BabyLM challenge.
 > [!NOTE]
-> Currently the code assumes that the checkpoint naming scheme is `chck_*M`. If you use a different naming scheme make sure to edit lines 16 and 17 of the `collate_preds.py` file.
+> Currently the code assumes that the checkpoint naming scheme is `chck_*M`. If you use a different naming scheme make sure to edit lines 16 and 17 of the `collate_preds.py` file. In addition the code assumes that the training is done on the maximum number of words possible, please edit this if it is not the case for you.
 
 If you are submitting to the `strict-small` track, make sure to add the flag `--strict_small`.
 If you are submitting to the `multimodal` track, make sure to add the flag `--multimodal`.
