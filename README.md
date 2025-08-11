@@ -330,12 +330,12 @@ The submission is a JSON file where the first key represents the benchmark, the 
 ```
 
 ### Leaderboard
-You can find the leaderboard for the non-hidden tasks [here](https://huggingface.co/spaces/BabyLM-community/babylm-leaderboard-2025-no-hidden-tasks).
+You can find the leaderboard for the non-hidden tasks [here](https://huggingface.co/spaces/BabyLM-community/babylm-leaderboard-2025-all-tasks).
 
 
 ### Steps to submission
 
-First train a model, then run `eval_zero_shot.sh` on the final checkpoint, then `eval_finetuning.sh` on the final checkpoint, if you are in the multimodal track, run `eval_multimodal.sh` on the final checkpoint. Then run `eval_aoa.sh` and `eval_zero_shot_fast_all_revisions.sh`. Finally run `collate_preds.sh` and submit to the leaderboard. 
+For all challenge tracks, you should run the 'eval_zero_shot.sh' and 'eval_finetuning.sh' scripts on the final checkpoint. The 'eval_aoa.sh' and 'eval_zero_shot_fast_all_revisions.sh' scripts should likewise be run for all challenge tracks, but these conduct evaluations for all model checkpoints. If you are in the multimodal track, you should run 'eval_multimodal.sh' as well. Once you have run all scripts for evaluation, you should run 'collate_preds.sh' and submit to the [leaderboard](https://huggingface.co/spaces/BabyLM-community/babylm-leaderboard-2025-all-tasks).
 
 
 ----
