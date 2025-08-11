@@ -81,12 +81,13 @@ def rank_and_evaluate_wug(args, subset_to_stats, all_log_probs, raw_sentences, l
         chosen_sentences = torch.max(stacked_probs, dim=1)[1].tolist()
 
         stacked_probs = torch.nn.functional.softmax(stacked_probs, dim=1)
-        model_ratios = []
-        human_ratios = []
 
+        for key in ["model_ratios", "human_ratios"]:
+            if key not in temp_dict:
+                temp_dict[key] = []
         for raw_sentence_dict, chosen_sentence, label, metadata, uid, prob in zip(raw_sentences, chosen_sentences, labels, metadatas, uids, stacked_probs[:, 0]):
-            model_ratios.append(prob)
-            human_ratios.append(metadata['ratio'])
+            temp_dict["model_ratios"].append(prob)
+            temp_dict["human_ratios"].append(metadata['ratio'])
 
             if args.save_predictions:
                 num_id_matches = len(predictions[temp][uid])
@@ -95,7 +96,7 @@ def rank_and_evaluate_wug(args, subset_to_stats, all_log_probs, raw_sentences, l
 
                 predictions[temp][uid].append(prediction)
 
-        temp_dict["correlation"] = spearmanr(model_ratios, human_ratios)[0]
+        temp_dict["correlation"] = spearmanr(temp_dict["model_ratios"], temp_dict["human_ratios"])[0]
 
 
 def compute_causal_results(args, model, dataloader, temperatures):

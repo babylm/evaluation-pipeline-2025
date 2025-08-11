@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 import argparse
 import logging
+import pathlib
 from pathlib import Path
 
 import torch
-from eval_util import JsonProcessor, StepConfig, load_eval
-from evaluation_functions import StepSurprisalExtractor
+from evaluation_pipeline.AoA_word.eval_util import JsonProcessor, StepConfig, load_eval
+from evaluation_pipeline.AoA_word.evaluation_functions import StepSurprisalExtractor
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -33,12 +34,29 @@ def parse_args() -> argparse.Namespace:
         help="Target model name",
     )
     parser.add_argument(
+        '-b',
+        '--backend',
+        type=str,
+        default="causal",
+        choices=["mlm", "causal", "mntp", "enc_dec_mask", "enc_dec_prefix"]
+    )
+    parser.add_argument(
+        "-t",
+        "--track_name",
+        type=str,
+        default="non-strict-small", choices=["strict-small", "non-strict-small"],
+        help="Which track the model was trained for (controls checkpoint names)"
+    )
+    parser.add_argument(
+        "--output_dir",
+        default="results",
+        type=pathlib.Path,
+        help="Path to the data directory"
+    )
+    parser.add_argument(
         "--eval_lst",
         type=list,
         help="Eval file list",
-    )
-    parser.add_argument(
-        "--interval", type=int, default=10, help="Checkpoint interval sampling"
     )
     parser.add_argument(
         "--min_context", type=int, default=20, help="Minimum number of contexts"
@@ -46,10 +64,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--use_bos_only", action="store_true", help="Use BOS only if enabled"
     )
-    parser.add_argument(
-        "--start", type=int, default=14, help="Start index of step range"
-    )
-    parser.add_argument("--end", type=int, default=142, help="End index of step range")
     parser.add_argument(
         "--debug", action="store_true", help="Compute the first 5 lines if enabled"
     )
@@ -59,14 +73,15 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def config_paths(args, filename: str) -> tuple[Path, Path | None]:
+def config_paths(args) -> tuple[Path, Path | None]:
     """Initialize paths for results and resume files."""
-    word_path_stem = Path(args.word_path).stem
-    result_file = Path(word_path_stem) / filename
-    result_file.parent.mkdir(parents=True, exist_ok=True)
+    model_name = pathlib.Path(args.model_name).stem
+    full_output_dir = args.output_dir / model_name / "main" / "zero_shot" / args.backend / "AoA_word"
+    full_output_dir.mkdir(parents=True, exist_ok=True)
 
+    result_file = full_output_dir / "surprisal.json"
     if args.resume:
-        resume_file = Path(word_path_stem) / "resume" / filename
+        resume_file = full_output_dir / "resume" / "surprisal.json"
         resume_file.parent.mkdir(parents=True, exist_ok=True)
     else:
         resume_file = None
@@ -138,29 +153,21 @@ def main() -> None:
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     target_words, contexts = load_eval(args.word_path, args.min_context, args.debug)
-
-    model_name_safe = args.model_name.replace("/", "_")
-    filename = f"{model_name_safe}_surprisal.json"
-    if args.debug:
-        filename = f"{model_name_safe}_surprisal_debug.json"
-
-    result_file, resume_file = config_paths(args, filename)
+    result_file, resume_file = config_paths(args)
 
     steps_config = StepConfig(
         resume=args.resume,
+        track=args.track_name,
         file_path=resume_file,
         debug=args.debug,
-        interval=args.interval,
-        start_idx=args.start,
-        end_idx=args.end,
     )
 
     extractor = StepSurprisalExtractor(
         config=steps_config,
         model_name=args.model_name,
-        model_cache_dir=Path(args.model_name.replace("/", "_")),
+        backend=args.backend,
         device=device,
-    )
+    ) 
 
     logger.info("Computing surprisal across training steps")
     results_data = extractor.analyze_steps(

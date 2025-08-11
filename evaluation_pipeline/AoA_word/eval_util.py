@@ -24,90 +24,37 @@ class StepConfig:
     def __init__(
         self,
         resume: bool = False,
+        track: str = "non-strict-small",
         debug: bool = False,
         file_path: Path | None = None,
-        interval: int = 1,
-        start_idx: int = 0,
-        end_idx: int | None = None,
     ) -> None:
-        self.steps = self.generate_pythia_checkpoints()
-
-        if interval > 1 or start_idx > 0 or end_idx is not None:
-            self.steps = self._apply_interval_sampling(
-                self.steps, interval, start_idx, end_idx
-            )
-            range_info = f"from index {start_idx}"
-            if end_idx is not None:
-                range_info += f" to {end_idx}"
-            logger.info(
-                f"Applied interval sampling with n={interval} {range_info}, resulting in {len(self.steps)} steps"
-            )
+        self.steps, self.word_counts = self.generate_checkpoint_steps(track)
 
         if debug:
             self.steps = self.steps[:5]
+            self.word_counts = self.word_counts[:5]
             logger.info("Entering debugging mode, select first 5 steps.")
 
         if resume and file_path is not None:
-            self.steps = self.recover_steps(file_path)
+           self.steps, self.word_counts = self.recover_steps(file_path)
 
         logger.info(f"Generated {len(self.steps)} checkpoint steps")
 
-    def _apply_interval_sampling(
-        self,
-        steps: list[int],
-        interval: int = 1,
-        start_idx: int = 0,
-        end_idx: int | None = None,
-    ) -> list[int]:
-        """Sample steps at every nth interval within specified range while preserving start and end steps."""
-        if len(steps) <= 2:
-            return steps
 
-        start_idx = max(0, min(start_idx, len(steps) - 2))
-
-        if end_idx is None:
-            end_idx = len(steps) - 1
-        else:
-            end_idx = max(start_idx + 1, min(end_idx, len(steps) - 1))
-
-        first_step = steps[0]
-        last_step = steps[-1]
-
-        if start_idx == 0 and end_idx == len(steps) - 1:
-            middle_steps = steps[1:-1][::interval]
-        else:
-            range_to_sample = steps[start_idx : end_idx + 1]
-
-            if start_idx == 0:
-                range_to_sample = range_to_sample[1:]
-
-            if end_idx == len(steps) - 1:
-                range_to_sample = range_to_sample[:-1]
-
-            middle_steps = range_to_sample[::interval]
-
-        result = [first_step]
-        result.extend(middle_steps)
-        result.append(last_step)
-
-        return sorted(list(set(result)))
-
-    def generate_pythia_checkpoints(self) -> list[int]:
-        """Generate complete list of Pythia checkpoint steps."""
-        checkpoints = [0]
-        log_spaced = [2**i for i in range(10)]
-        step_size = (143000 - 1000) // 142
-        linear_spaced = list(range(1000, 143001, step_size))
-
-        checkpoints.extend(log_spaced)
-        checkpoints.extend(linear_spaced)
-
-        return sorted(list(set(checkpoints)))
+    def generate_checkpoint_steps(self, track) -> list[int]:
+        """Generate complete list of checkpoint steps."""
+        M = 10**6
+        checkpoint_names = [f'chck_{i}M' for i in range(1, 10)] + [f'chck_{i*10}M' for i in range(1, 11)]
+        word_counts = [i*M for i in range(1, 10)] + [10*i*M for i in range(1, 11)]
+        if track != "strict-small":
+            checkpoint_names = checkpoint_names + [f'chck_{i*100}M' for i in range(2, 11)]
+            word_counts = word_counts + [100*i*M for i in range(2, 11)]
+        return checkpoint_names, word_counts
 
     def recover_steps(self, file_path: Path) -> list[int]:
         """Filter out steps that have already been processed based on JSON keys."""
         if not file_path.is_file():
-            return self.steps
+            return self.steps, self.word_counts
 
         try:
             data = JsonProcessor.load_json(file_path)
@@ -122,10 +69,12 @@ class StepConfig:
                     if isinstance(result, dict) and "step" in result:
                         completed_steps.add(result["step"])
 
-            return [step for step in self.steps if step not in completed_steps]
+            new_steps = [step for step in self.steps if step not in completed_steps]
+            new_word_counts = self.word_counts[-len(new_steps):]
+            return new_steps, new_word_counts
         except Exception as e:
             logger.warning(f"Error reading resume file: {e}")
-            return self.steps
+            return self.steps, self.word_counts
 
 
 class JsonProcessor:
