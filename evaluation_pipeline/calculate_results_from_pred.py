@@ -271,7 +271,7 @@ def _calculate_aoa_results(
     evaluator = AoAEvaluator(cdi_data_path)
     # Compute curve fitness
     fitness_results = evaluator.compute_curve_fitness(results_dict)
-    return fitness_results
+    return fitness_results["curve_fitness"]
 
 
 if __name__ == "__main__":
