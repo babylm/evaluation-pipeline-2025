@@ -25,6 +25,8 @@ WINOGROUND_SIZE = 746
 VQA_SIZE = 25230
 DEVBENCH = {"things": (1854, 1854), "trog": (76, 4, 1), "lex-viz_vocab": (119, 4, 1)}
 
+AOA_SIZE = 6560
+
 BLIMP_SIZES = {
     'superlative_quantifiers_2': 986,
     'superlative_quantifiers_1': 979,
@@ -277,6 +279,9 @@ def _check_validity_of_dir(args: argparse.Namespace, revision_name: str, fast: b
         if not (zero_shot_path / "reading" / "predictions.json").exists():
             print("The reading data is missing!")
             valid = False
+        if not (zero_shot_path / "AoA_word" / "surprisal.json").exists():
+            print("The AoA surprisal data is missing!")
+            valid = False
         if args.multimodal:
             if not (zero_shot_path / "vqa" / "vqa_filtered" / "predictions.json").exists():
                 print("The vqa data is missing!")
@@ -322,6 +327,30 @@ def _check_size(task: str, results: dict[str, dict[str, list[dict[str, str | int
                     print(f"The sub-data {key} from {task} has {len(res['predictions'])} datapoints, when it should have {FULL_SIZES[task]} datapoints!")
     return valid
 
+
+def _check_size_aoa(args, results):
+    # First check if we have predictions for each checkpoint
+    revision_list = STRICT_SMALL_FAST_REVISIONS if args.strict_small else OTHER_FAST_REVISIONS
+    revisions_in_results = {r['step'] for r in results["results"]}
+    if len(revision_list) != len(revisions_in_results):
+        valid = False
+        print(f"Found predictions for {len(revisions_in_results)} checkpoints in AoA data. Was expecting {len(revision_list)}")
+        return valid
+    for revision in revision_list:
+        if revision not in revisions_in_results:
+            valid = False
+            print(f"Did not find results for checkpoint {revision} in AoA data.")
+            return valid
+
+    # Next check the number of predictions per checkpoint
+    for revision in revision_list:
+        revision_results = [r for r in results["results"] if r['step'] == revision]
+        if len(revision_results) != AOA_SIZE:
+            valid = False
+            print(f"There are {len(revision_results)} predictions for checkpoint {revision} in AoA data, when there should be {AOA_SIZE}")
+            return valid
+
+    return True
 
 def _check_size_devbench(subtask: str, results: np.array[float]) -> bool:
     valid = True
@@ -409,6 +438,11 @@ def collate_full_eval_preds(args):
     read_results: dict[str, dict[str, list[dict[str, str | int | float]]]] = _load_results(zero_main_path / "reading" / "predictions.json")
     assert _check_size("reading", read_results, fast=False), "The Reading data is incorrect"
     full_results["reading"] = read_results
+
+    # Reading
+    aoa_results = _load_results(zero_main_path / "AoA_word" / "surprisal.json")
+    assert _check_size_aoa(args, aoa_results), "The AoA word data is incorrect"
+    full_results["aoa"] = aoa_results
 
     # GLUE
     full_results["glue"] = {}
@@ -602,7 +636,9 @@ def _calculate_reading_results(results_dict: dict[str, dict[str, list[dict[str, 
 
     return processed_results
 
-if __name__ == "__main__":
+def main():
     args = _parse_arguments()
-
     collate_preds(args)
+
+if __name__ == "__main__":
+    main()
