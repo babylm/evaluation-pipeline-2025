@@ -11,7 +11,7 @@ for i in {1..9}; do
     bash eval_zero_shot_fast.sh $MODEL_PATH $checkpoint $BACKEND $EVAL_DIR
 done
 
-for i in {10..100..10}; do
+for ((i=10; i<=100; i+=10)); do
     checkpoint="chck_${i}M"
     echo "Evaluating checkpoint ${checkpoint}"
     bash eval_zero_shot_fast.sh $MODEL_PATH $checkpoint $BACKEND $EVAL_DIR
@@ -19,7 +19,7 @@ done
 
 # Conditional on whether the track is strict-small
 if [[ "$3" != "strict-small" ]]; then
-    for i in {200..1000..100}; do
+    for ((i=200; i<=1000; i+=100)); do
 	checkpoint="chck_${i}M"
 	echo "Evaluating checkpoint ${checkpoint}"
 	bash eval_zero_shot_fast.sh $MODEL_PATH $checkpoint $BACKEND $EVAL_DIR
