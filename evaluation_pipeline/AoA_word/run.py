@@ -66,7 +66,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--min_context",
-        default=1,
+        default=0,
         type=int,
         help="Minimum number of contexts for a given word to be evaluated"
     )
