@@ -29,7 +29,7 @@ WINOGROUND_SIZE = 746
 VQA_SIZE = 25230
 DEVBENCH = {"things": (1854, 1854), "trog": (76, 4, 1), "lex-viz_vocab": (119, 4, 1)}
 
-AOA_SIZE = 6560
+AOA_SIZE = 8005
 
 BLIMP_SIZES = {
     'superlative_quantifiers_2': 986,
