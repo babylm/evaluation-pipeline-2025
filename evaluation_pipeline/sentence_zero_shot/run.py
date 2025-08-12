@@ -135,7 +135,7 @@ def create_evaluation_report(temperature: float, avg_accuracy: torch.Tensor, acc
         file(TextIOWrapper | None): The file to write to results to. (If None, it will printed
             printed to the terminal)
     """
-    metric = "ACCURACY" if task != "wug" else "SPEARMAN'S RHO"
+    metric = "ACCURACY" if "wug" not in task else "SPEARMAN'S RHO"
     print(f"TEMPERATURE: {temperature:.2f}", file=file)
     print(file=file)
 
