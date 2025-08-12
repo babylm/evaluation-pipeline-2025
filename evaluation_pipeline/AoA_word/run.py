@@ -64,6 +64,12 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Resume results from the existing checkpoint",
     )
+    parser.add_argument(
+        "--min_context",
+        default=1,
+        type=int,
+        help="Minimum number of contexts for a given word to be evaluated"
+    )
     return parser.parse_args()
 
 
@@ -105,7 +111,7 @@ def main() -> None:
     args = parse_args()
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    target_words, contexts = load_eval(args.word_path, args.debug)
+    target_words, contexts = load_eval(args.word_path, args.min_context, args.debug)
     result_file, resume_file = config_paths(args)
 
     steps_config = StepConfig(
