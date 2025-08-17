@@ -4,9 +4,9 @@ MODEL_PATH=$1
 LR=${2:-3e-5}           # default: 3e-5
 BSZ=${3:-32}            # default: 32
 BIG_BSZ=${4:-16}        # default: 16
-MAX_EPOCHS=${4:-10}     # default: 10
-WSC_EPOCHS=${5:-30}     # default: 30
-SEED=${5:-42}           # default: 42
+MAX_EPOCHS=${5:-10}     # default: 10
+WSC_EPOCHS=${6:-30}     # default: 30
+SEED=${7:-42}           # default: 42
 
 model_basename=$(basename $MODEL_PATH)
 
